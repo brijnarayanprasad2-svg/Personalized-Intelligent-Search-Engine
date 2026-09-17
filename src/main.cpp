@@ -73,9 +73,7 @@ int main()
     cout << "\nStarting local web crawler...\n";
 
     // Local HTML pages used as seed pages
-    crawler.addSeedURL("page1");
-    crawler.addSeedURL("page2");
-    crawler.addSeedURL("page3");
+    crawler.addSeedURL("page1.html");
 
     // Start crawling
     crawler.crawl();
@@ -194,14 +192,14 @@ int main()
         if (exactMatch)
         {
             cout << "\nExact Match: Found\n";
-
-            // Record successful search
-            searchHistory.recordSearch(query);
         }
         else
         {
             cout << "\nExact Match: Not Found\n";
         }
+
+        // Record every user query for personalization
+        searchHistory.recordSearch(query);
 
         // -----------------------------------------------------
         // AUTOCOMPLETE
@@ -217,6 +215,7 @@ int main()
         vector<string> rankedSuggestions =
             rankingEngine.rankSuggestions(
                 suggestions,
+                query,
                 searchHistory
             );
 
@@ -252,7 +251,23 @@ int main()
         // -----------------------------------------------------
 
         vector<SearchResult> pageResults =
-            searchIndex.searchPages(query);
+            searchIndex.searchPages(
+                query,
+                searchHistory
+            );
+
+        // Record page searches
+        for (const SearchResult& result : pageResults)
+        {
+          searchHistory.recordPageSearch(
+           result.getPageID()
+          );
+
+          searchHistory.recordQueryPage(
+          query,
+          result.getPageID()
+          );
+        }
 
         cout << "\nMatching Web Pages:\n";
 
@@ -271,19 +286,43 @@ int main()
                      << i + 1
                      << endl;
 
-                cout << "  Title   : "
+                cout << "  Title            : "
                      << pageResults[i].getTitle()
                      << endl;
 
-                cout << "  URL     : "
+                cout << "  URL              : "
                      << pageResults[i].getURL()
                      << endl;
-
-                cout << "  Score   : "
+                cout << "  Relevance Score        : "
                      << pageResults[i].getScore()
                      << endl;
 
-                cout << "  Content : "
+                cout << "  Query Frequency Score  : "
+                     << pageResults[i].getQueryFrequencyScore()
+                     << endl;
+
+                cout << "  Page Frequency Score   : "
+                     << pageResults[i].getPageFrequencyScore()
+                     << endl;
+
+                cout << "  Query-Page Score       : "
+                     << pageResults[i].getQueryPageScore()
+                     << endl;
+
+                cout << "  Recency Bonus          : "
+                     << pageResults[i].getRecencyBonus()
+                     << endl;
+
+                cout << "  Personalization        : "
+                     << pageResults[i].getPersonalizationScore()
+                     << endl;
+
+                cout << "  Final Score            : "
+                     << pageResults[i].getScore()
+                     + pageResults[i].getPersonalizationScore()
+                     << endl;
+                     
+                cout << "  Content          : "
                      << pageResults[i].getContent()
                      << endl;
             }
@@ -316,15 +355,20 @@ int main()
              << i + 1
              << endl;
 
-        cout << "  Title   : "
+        cout << "  Title        : "
              << crawledPages[i].getTitle()
              << endl;
 
-        cout << "  URL     : "
+        cout << "  URL          : "
              << crawledPages[i].getURL()
              << endl;
 
-        cout << "  Content : "
+        cout << "  Page Searches: "
+             << searchHistory.getPageSearchFrequency(
+                    static_cast<int>(i + 1))
+             << endl;
+
+        cout << "  Content      : "
              << crawledPages[i].getContent()
              << endl;
     }
@@ -342,3 +386,4 @@ int main()
 
     return 0;
 }
+

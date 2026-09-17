@@ -3,8 +3,86 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <cctype>
 
 using namespace std;
+
+// --------------------------------------------------
+// Remove HTML Tags
+// --------------------------------------------------
+
+string removeHTMLTags(const string& text)
+{
+    string result;
+    bool insideTag = false;
+
+    for (char ch : text)
+    {
+        if (ch == '<')
+        {
+            insideTag = true;
+        }
+        else if (ch == '>')
+        {
+            insideTag = false;
+        }
+        else if (!insideTag)
+        {
+            result += ch;
+        }
+    }
+
+    return result;
+}
+
+// --------------------------------------------------
+// Normalize Text
+// --------------------------------------------------
+
+string normalizeText(const string& text)
+{
+    string result;
+    bool previousWasSpace = false;
+
+    for (char ch : text)
+    {
+        // Convert uppercase characters to lowercase
+        ch = static_cast<char>(
+            tolower(static_cast<unsigned char>(ch))
+        );
+
+        // Convert multiple whitespace into one space
+        if (isspace(static_cast<unsigned char>(ch)))
+        {
+            if (!previousWasSpace)
+            {
+                result += ' ';
+                previousWasSpace = true;
+            }
+        }
+        else
+        {
+            result += ch;
+            previousWasSpace = false;
+        }
+    }
+
+    // Remove leading space
+    if (!result.empty() &&
+        result.front() == ' ')
+    {
+        result.erase(0, 1);
+    }
+
+    // Remove trailing space
+    if (!result.empty() &&
+        result.back() == ' ')
+    {
+        result.pop_back();
+    }
+
+    return result;
+}
 
 // --------------------------------------------------
 // Constructor
@@ -26,8 +104,14 @@ void WebCrawler::addSeedURL(const string& url)
     if (url.empty())
         return;
 
-    if (visitedURLs.find(url) == visitedURLs.end())
+    // Add URL only if it has not been
+    // visited or already added to the queue
+    if (visitedURLs.find(url) == visitedURLs.end() &&
+        queuedURLs.find(url) == queuedURLs.end())
+    {
         urlQueue.push(url);
+        queuedURLs.insert(url);
+    }
 }
 
 // --------------------------------------------------
@@ -36,28 +120,27 @@ void WebCrawler::addSeedURL(const string& url)
 
 string WebCrawler::fetchPage(const string& url)
 {
-    cout << "\nFetching: " << url << endl;
+    cout << "\nFetching: "
+         << url
+         << endl;
 
-    string filename;
+    // Create local file path
+    string filename = "data/" + url;
 
-    if (url == "page1")
-        filename = "data/page1.html";
-
-    else if (url == "page2")
-        filename = "data/page2.html";
-
-    else if (url == "page3")
-        filename = "data/page3.html";
-
-    else
-        return "";
+    // Add .html if extension is missing
+    if (filename.size() < 5 ||
+        filename.substr(filename.size() - 5) != ".html")
+    {
+        filename += ".html";
+    }
 
     ifstream file(filename);
 
     if (!file.is_open())
     {
         cout << "Could not open: "
-             << filename << endl;
+             << filename
+             << endl;
 
         return "";
     }
@@ -104,6 +187,10 @@ WebPage WebCrawler::parsePage(
             titleStart,
             titleEnd - titleStart
         );
+
+        // Clean and normalize title
+        title = removeHTMLTags(title);
+        title = normalizeText(title);
     }
 
     // ----------------------------------------------
@@ -133,6 +220,12 @@ WebPage WebCrawler::parsePage(
                 paragraphStart,
                 paragraphEnd - paragraphStart
             );
+
+        // Remove HTML tags
+        paragraph = removeHTMLTags(paragraph);
+
+        // Normalize text
+        paragraph = normalizeText(paragraph);
 
         if (!paragraph.empty())
         {
@@ -173,8 +266,29 @@ WebPage WebCrawler::parsePage(
                 hrefEnd - hrefStart
             );
 
-        if (!link.empty())
+        // ------------------------------------------
+        // Accept only local links
+        // ------------------------------------------
+
+        if (!link.empty() &&
+            link.find("http://") != 0 &&
+            link.find("https://") != 0 &&
+            link.find("mailto:") != 0 &&
+            link[0] != '#')
+        {
+            // Add .html if extension is missing
+            if (link.size() < 5 ||
+                link.substr(link.size() - 5) != ".html")
+            {
+                link += ".html";
+            }
+
             links.push_back(link);
+
+            cout << "  Link found: "
+                 << link
+                 << endl;
+        }
 
         position = hrefEnd + 1;
     }
@@ -211,6 +325,9 @@ void WebCrawler::crawl()
 
         urlQueue.pop();
 
+        // URL is no longer waiting in queue
+        queuedURLs.erase(currentURL);
+
         // ------------------------------------------
         // Avoid Duplicate URLs
         // ------------------------------------------
@@ -221,7 +338,7 @@ void WebCrawler::crawl()
             continue;
         }
 
-        // Mark as visited
+        // Mark URL as visited
         visitedURLs.insert(currentURL);
 
         // ------------------------------------------
@@ -271,15 +388,20 @@ void WebCrawler::crawl()
         // Add Discovered Links to Queue
         // ------------------------------------------
 
-        vector<string> links =
+        vector<string> discoveredLinks =
             page.getLinks();
 
-        for (const string& link : links)
+        for (const string& link : discoveredLinks)
         {
+            // Add only URLs which are not
+            // visited or already queued
             if (visitedURLs.find(link)
-                == visitedURLs.end())
+                    == visitedURLs.end() &&
+                queuedURLs.find(link)
+                    == queuedURLs.end())
             {
                 urlQueue.push(link);
+                queuedURLs.insert(link);
             }
         }
 

@@ -18,6 +18,7 @@ private:
     unordered_set<string> visitedURLs;
 
     vector<WebPage> pages;
+    unordered_set<string> queuedURLs;
 
     int maxPages;
 

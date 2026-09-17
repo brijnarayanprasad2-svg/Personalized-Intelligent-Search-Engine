@@ -24,18 +24,25 @@ python
 python programming
 python course
 java
+java programming
 javascript
+javascript programming
 database
 data
 data structure
+data structures
 data science
 data analysis
+data mining
+data processing
+data management
 computer
 computer science
 computer programming
 coding
 code
 cplusplus
+c++ programming
 cloud
 cloud computing
 machine
@@ -47,8 +54,184 @@ binary search
 linear search
 tree
 binary tree
+binary search tree
 graph
 graph algorithm
+graph traversal
 stack
 queue
 linked list
+array
+arrays
+string
+strings
+vector
+hash table
+hashing
+heap
+priority queue
+deque
+circular queue
+recursion
+iteration
+sorting
+searching
+insertion sort
+selection sort
+bubble sort
+merge sort
+quick sort
+dynamic programming
+greedy algorithm
+backtracking
+time complexity
+space complexity
+big o notation
+data structure algorithm
+object
+object oriented programming
+oops
+class
+classes
+object
+inheritance
+polymorphism
+encapsulation
+abstraction
+constructor
+destructor
+function
+functions
+variable
+variables
+pointer
+pointers
+reference
+memory
+memory management
+compiler
+compilers
+debugging
+debugger
+syntax
+program execution
+source code
+header file
+library
+software
+hardware
+operating system
+linux
+windows
+network
+networking
+internet
+web
+website
+webpage
+web development
+browser
+server
+client
+http
+https
+url
+html
+css
+api
+search
+search engine
+search query
+search result
+search history
+autocomplete
+suggestion
+ranking
+ranked search
+personalization
+personalized search
+web crawler
+crawler
+crawling
+index
+indexing
+search index
+inverted index
+document
+documents
+web page
+page ranking
+query processing
+text processing
+text search
+keyword
+keywords
+token
+tokenization
+normalization
+frequency
+recency
+relevance
+ranking algorithm
+search algorithm
+trie
+trie tree
+prefix
+prefix search
+prefix matching
+autocomplete search
+hash map
+unordered map
+priority queue ranking
+data indexing
+information retrieval
+information search
+information system
+natural language
+natural language processing
+nlp
+machine
+learning model
+training
+testing
+prediction
+neural network
+deep learning
+supervised learning
+unsupervised learning
+classification
+regression
+dataset
+feature
+model
+cloud service
+cloud storage
+cloud database
+virtual machine
+aws
+amazon web services
+storage
+database management
+sql
+mysql
+mongodb
+security
+cyber security
+authentication
+authorization
+encryption
+firewall
+password
+technology
+computer technology
+software engineering
+software development
+application development
+system design
+problem solving
+logical thinking
+competitive programming
+coding practice
+programming practice
+algorithm design
+algorithm analysis
