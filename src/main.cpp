@@ -9,8 +9,53 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <cctype>
 
 using namespace std;
+
+
+// =========================================================
+// QUERY NORMALIZATION
+// =========================================================
+
+string normalizeUserQuery(const string& query)
+{
+    string result;
+    bool lastWasSpace = true;
+
+    for (char ch : query)
+    {
+        unsigned char c =
+            static_cast<unsigned char>(ch);
+
+        if (isalnum(c))
+        {
+            result +=
+                static_cast<char>(tolower(c));
+
+            lastWasSpace = false;
+        }
+        else if (!lastWasSpace)
+        {
+            result += ' ';
+            lastWasSpace = true;
+        }
+    }
+
+    // Remove trailing space
+    if (!result.empty() &&
+        result.back() == ' ')
+    {
+        result.pop_back();
+    }
+
+    return result;
+}
+
+
+// =========================================================
+// MAIN
+// =========================================================
 
 int main()
 {
@@ -24,8 +69,9 @@ int main()
     RankingEngine rankingEngine;
     SearchIndex searchIndex;
 
-    // Maximum pages that can be crawled
+    // Maximum number of pages to crawl
     WebCrawler crawler(5);
+
 
     // =========================================================
     // 2. APPLICATION HEADER
@@ -38,8 +84,9 @@ int main()
 
     cout << "\nInitializing search engine...\n";
 
+
     // =========================================================
-    // 3. LOAD SEARCH DATA
+    // 3. LOAD SEARCH VOCABULARY
     // =========================================================
 
     vector<string> words =
@@ -56,11 +103,12 @@ int main()
              << " words\n";
     }
 
-    // Insert words into Trie
+    // Insert all vocabulary words into Trie
     for (const string& word : words)
     {
         trie.insert(word);
     }
+
 
     // =========================================================
     // 4. WEB CRAWLER
@@ -70,15 +118,16 @@ int main()
     cout << "                 WEB CRAWLER\n";
     cout << "==================================================\n";
 
-    cout << "\nStarting local web crawler...\n";
+    cout << "\nStarting web crawler...\n";
 
-    // Local HTML pages used as seed pages
-    crawler.addSeedURL("page1");
-    crawler.addSeedURL("page2");
-    crawler.addSeedURL("page3");
+    // Seed URL
+    crawler.addSeedURL(
+        "https://iana.org/domains/example"
+    );
 
     // Start crawling
     crawler.crawl();
+
 
     // =========================================================
     // 5. GET CRAWLED PAGES
@@ -90,6 +139,7 @@ int main()
     cout << "\nCrawled pages available: "
          << crawledPages.size()
          << endl;
+
 
     // =========================================================
     // 6. BUILD SEARCH INDEX
@@ -112,6 +162,7 @@ int main()
     cout << "\nSearch index successfully built for "
          << crawledPages.size()
          << " pages.\n";
+
 
     // =========================================================
     // 7. PAGE SEARCH DEMONSTRATION
@@ -146,8 +197,9 @@ int main()
         }
     }
 
+
     // =========================================================
-    // 8. INTERACTIVE SEARCH
+    // 8. INTERACTIVE SEARCH INTERFACE
     // =========================================================
 
     cout << "\n==================================================\n";
@@ -157,13 +209,20 @@ int main()
     cout << "\nYou can search the vocabulary and crawled pages.\n";
     cout << "Type 'exit' to close the application.\n";
 
+
     string query;
+    string normalizedQuery;
+
 
     while (true)
     {
-        cout << "\nSearch: ";
+        // -----------------------------------------------------
+        // GET USER QUERY
+        // -----------------------------------------------------
 
+        cout << "\nSearch: ";
         getline(cin, query);
+
 
         // -----------------------------------------------------
         // EXIT
@@ -174,51 +233,78 @@ int main()
             break;
         }
 
+
         // -----------------------------------------------------
-        // EMPTY QUERY
+        // NORMALIZE USER QUERY
         // -----------------------------------------------------
 
-        if (query.empty())
+        normalizedQuery =
+            normalizeUserQuery(query);
+
+
+        // -----------------------------------------------------
+        // EMPTY QUERY CHECK
+        // -----------------------------------------------------
+
+        if (normalizedQuery.empty())
         {
-            cout << "Please enter a search query.\n";
+            cout << "Please enter a valid search query.\n";
             continue;
         }
 
-        // -----------------------------------------------------
+
+        cout << "Processed Query: "
+             << normalizedQuery
+             << endl;
+
+
+        // =====================================================
         // EXACT WORD SEARCH
-        // -----------------------------------------------------
+        // =====================================================
 
         bool exactMatch =
-            trie.search(query);
+            trie.search(normalizedQuery);
 
         if (exactMatch)
         {
             cout << "\nExact Match: Found\n";
-
-            // Record successful search
-            searchHistory.recordSearch(query);
         }
         else
         {
             cout << "\nExact Match: Not Found\n";
         }
 
-        // -----------------------------------------------------
+
+        // =====================================================
+        // RECORD SEARCH HISTORY
+        // =====================================================
+
+        searchHistory.recordSearch(
+            normalizedQuery
+        );
+
+
+        // =====================================================
         // AUTOCOMPLETE
-        // -----------------------------------------------------
+        // =====================================================
 
         vector<string> suggestions =
-            trie.autocomplete(query);
+            trie.autocomplete(
+                normalizedQuery
+            );
 
-        // -----------------------------------------------------
+
+        // =====================================================
         // RANK SUGGESTIONS
-        // -----------------------------------------------------
+        // =====================================================
 
         vector<string> rankedSuggestions =
             rankingEngine.rankSuggestions(
                 suggestions,
+                normalizedQuery,
                 searchHistory
             );
+
 
         cout << "\nRanked Suggestions:\n";
 
@@ -247,12 +333,39 @@ int main()
             }
         }
 
-        // -----------------------------------------------------
+
+        // =====================================================
         // SEARCH CRAWLED WEB PAGES
-        // -----------------------------------------------------
+        // =====================================================
 
         vector<SearchResult> pageResults =
-            searchIndex.searchPages(query);
+            searchIndex.searchPages(
+                normalizedQuery,
+                searchHistory
+            );
+
+
+        // =====================================================
+        // RECORD PAGE SEARCH HISTORY
+        // =====================================================
+
+        for (const SearchResult& result :
+             pageResults)
+        {
+            searchHistory.recordPageSearch(
+                result.getPageID()
+            );
+
+            searchHistory.recordQueryPage(
+                normalizedQuery,
+                result.getPageID()
+            );
+        }
+
+
+        // =====================================================
+        // DISPLAY WEB PAGE RESULTS
+        // =====================================================
 
         cout << "\nMatching Web Pages:\n";
 
@@ -271,30 +384,63 @@ int main()
                      << i + 1
                      << endl;
 
-                cout << "  Title   : "
+                cout << "  Title                  : "
                      << pageResults[i].getTitle()
                      << endl;
 
-                cout << "  URL     : "
+                cout << "  URL                    : "
                      << pageResults[i].getURL()
                      << endl;
 
-                cout << "  Score   : "
+                cout << "  Relevance Score        : "
                      << pageResults[i].getScore()
                      << endl;
 
-                cout << "  Content : "
+                cout << "  Query Frequency Score  : "
+                     << pageResults[i]
+                            .getQueryFrequencyScore()
+                     << endl;
+
+                cout << "  Page Frequency Score   : "
+                     << pageResults[i]
+                            .getPageFrequencyScore()
+                     << endl;
+
+                cout << "  Query-Page Score       : "
+                     << pageResults[i]
+                            .getQueryPageScore()
+                     << endl;
+
+                cout << "  Recency Bonus          : "
+                     << pageResults[i]
+                            .getRecencyBonus()
+                     << endl;
+
+                cout << "  Personalization        : "
+                     << pageResults[i]
+                            .getPersonalizationScore()
+                     << endl;
+
+                cout << "  Final Score            : "
+                     << pageResults[i].getScore()
+                        + pageResults[i]
+                            .getPersonalizationScore()
+                     << endl;
+
+                cout << "  Content                : "
                      << pageResults[i].getContent()
                      << endl;
             }
         }
     }
 
+
     // =========================================================
     // 9. SEARCH HISTORY
     // =========================================================
 
     searchHistory.displayHistory();
+
 
     // =========================================================
     // 10. CRAWLED PAGE SUMMARY
@@ -316,18 +462,24 @@ int main()
              << i + 1
              << endl;
 
-        cout << "  Title   : "
+        cout << "  Title        : "
              << crawledPages[i].getTitle()
              << endl;
 
-        cout << "  URL     : "
+        cout << "  URL          : "
              << crawledPages[i].getURL()
              << endl;
 
-        cout << "  Content : "
+        cout << "  Page Searches: "
+             << searchHistory.getPageSearchFrequency(
+                    static_cast<int>(i + 1))
+             << endl;
+
+        cout << "  Content      : "
              << crawledPages[i].getContent()
              << endl;
     }
+
 
     // =========================================================
     // 11. PROGRAM TERMINATION

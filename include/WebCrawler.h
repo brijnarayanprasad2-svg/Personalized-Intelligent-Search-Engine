@@ -2,6 +2,7 @@
 #define WEBCRAWLER_H
 
 #include "WebPage.h"
+#include "HttpClient.h"
 
 #include <string>
 #include <vector>
@@ -17,12 +18,16 @@ private:
 
     unordered_set<string> visitedURLs;
 
+    unordered_set<string> queuedURLs;
+
     vector<WebPage> pages;
 
     int maxPages;
 
-    // Fetch HTML content from a local page
-    string fetchPage(const string& url);
+    // Fetch HTML content from a URL
+    string fetchPage(
+        const string& url
+    );
 
     // Convert HTML into a WebPage object
     WebPage parsePage(
@@ -30,12 +35,26 @@ private:
         const string& html
     );
 
+    // Remove fragment and trailing slash
+    string canonicalizeURL(
+        const string& url
+    ) const;
+
+    // Check whether URL can be crawled
+    bool isCrawlableURL(
+        const string& url
+    ) const;
+
 public:
     // Constructor
-    explicit WebCrawler(int limit = 10);
+    explicit WebCrawler(
+        int limit = 10
+    );
 
     // Add a starting URL
-    void addSeedURL(const string& url);
+    void addSeedURL(
+        const string& url
+    );
 
     // Start BFS-style crawling
     void crawl();
