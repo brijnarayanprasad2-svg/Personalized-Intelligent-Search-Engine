@@ -1,0 +1,185 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PISE | Intelligent Search</title>
+    <link rel="stylesheet" href="./style.css">
+</head>
+
+<body>
+
+    <canvas id="threeCanvas"></canvas>
+
+    <header class="navbar">
+
+        <div class="brand">
+            <div class="brand-icon">P</div>
+
+            <div>
+                <div class="brand-name">PISE</div>
+                <div class="brand-subtitle">INTELLIGENT SEARCH</div>
+            </div>
+        </div>
+
+        <div class="status">
+            <span class="status-dot"></span>
+            Search Engine Active
+        </div>
+
+    </header>
+
+
+    <main class="main-container">
+
+        <section class="hero">
+
+            <div class="hero-badge">
+                PERSONALIZED SEARCH TECHNOLOGY
+            </div>
+
+            <h1>
+                Search
+                <span>Beyond Keywords.</span>
+            </h1>
+
+            <p class="hero-description">
+                A personalized intelligent search engine powered by
+                data structures, ranking, spelling correction and
+                user search behaviour.
+            </p>
+
+
+            <div class="search-wrapper">
+
+                <div class="search-box">
+
+                    <div class="search-icon">
+                        SEARCH
+                    </div>
+
+                    <input
+                        id="searchInput"
+                        type="text"
+                        placeholder="Search the intelligent web..."
+                        autocomplete="off"
+                    >
+
+                    <button
+                        id="clearButton"
+                        class="clear-button"
+                        type="button"
+                    >
+                        X
+                    </button>
+
+                    <button
+                        id="searchButton"
+                        class="search-button"
+                        type="button"
+                    >
+                        Search →
+                    </button>
+
+                </div>
+
+                <div
+                    id="suggestion"
+                    class="suggestion"
+                ></div>
+
+            </div>
+
+
+            <div class="quick-searches">
+
+                <span>Try:</span>
+
+                <button
+                    class="quick-search"
+                    data-query="internet"
+                    type="button"
+                >
+                    internet
+                </button>
+
+                <button
+                    class="quick-search"
+                    data-query="dns"
+                    type="button"
+                >
+                    dns
+                </button>
+
+                <button
+                    class="quick-search"
+                    data-query="protocol"
+                    type="button"
+                >
+                    protocol
+                </button>
+
+            </div>
+
+        </section>
+
+
+        <section
+            id="resultsSection"
+            class="results-section hidden"
+        >
+
+            <div class="results-top">
+
+                <div>
+                    <div class="results-label">
+                        SEARCH RESULTS
+                    </div>
+
+                    <h2 id="resultsTitle">
+                        Results
+                    </h2>
+                </div>
+
+                <div
+                    id="resultCount"
+                    class="result-count"
+                >
+                    0 results
+                </div>
+
+            </div>
+
+            <div
+                id="resultsContainer"
+                class="results-container"
+            ></div>
+
+        </section>
+
+    </main>
+
+
+    <footer class="footer">
+
+        <span>PISE</span>
+
+        <span>
+            Personalized Intelligent Search Engine
+        </span>
+
+        <span>
+            DS & OOP Based System
+        </span>
+
+    </footer>
+
+
+    <script src="./script.js"></script>
+
+</body>
+
+</html>
+
+
