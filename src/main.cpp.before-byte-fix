@@ -1,4 +1,3 @@
-#include "../include/ApiServer.h"
 #include "../include/Trie.h"
 #include "../include/SearchData.h"
 #include "../include/SearchHistory.h"
@@ -6,6 +5,7 @@
 #include "../include/WebCrawler.h"
 #include "../include/SearchIndex.h"
 #include "../include/SearchResult.h"
+#include "../include/ApiServer.h"
 #include <sstream>
 
 #include <iostream>

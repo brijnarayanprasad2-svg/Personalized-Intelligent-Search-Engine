@@ -5,7 +5,6 @@
 #include <cctype>
 #include <algorithm>
 #include <ctime>
-#include <unordered_set>
 
 using namespace std;
 
@@ -390,6 +389,11 @@ vector<SearchResult> SearchIndex::searchPages(
                  queryWords.size()
              ));
 
+
+        if (!allWordsMatched)
+        {
+            continue;
+        }
 
         if (!allWordsMatched)
         {

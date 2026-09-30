@@ -8,10 +8,82 @@ const resultsTitle = document.getElementById("resultsTitle");
 const resultCount = document.getElementById("resultCount");
 
 
-
-const API_BASE_URL = "http://127.0.0.1:8080";
 // ==========================================
 // DEMO SEARCH DATA
+// ==========================================
+
+const demoResults = {
+
+    internet: [
+        {
+            title: "Internet Assigned Numbers Authority",
+            url: "https://iana.org",
+            snippet:
+                "The global coordination of the DNS root, IP addressing, and other Internet protocol resources is performed by the Internet Assigned Numbers Authority.",
+            relevance: 10,
+            personalization: 7,
+            finalScore: 17
+        },
+
+        {
+            title: "Number Resources",
+            url: "https://iana.org/numbers",
+            snippet:
+                "We are responsible for global coordination of the Internet Protocol addressing systems and the autonomous system numbers used for routing Internet traffic.",
+            relevance: 8,
+            personalization: 5,
+            finalScore: 13
+        }
+    ],
+
+    dns: [
+        {
+            title: "Domain Name Services",
+            url: "https://iana.org/domains",
+            snippet:
+                "We operate and maintain a number of key aspects of the DNS, including the root zone and the .int and .arpa domains.",
+            relevance: 3,
+            personalization: 5,
+            finalScore: 8
+        },
+
+        {
+            title: "Internet Assigned Numbers Authority",
+            url: "https://iana.org",
+            snippet:
+                "The global coordination of the DNS root, IP addressing and other Internet protocol resources is performed by the Internet Assigned Numbers Authority.",
+            relevance: 2,
+            personalization: 5,
+            finalScore: 7
+        }
+    ],
+
+    protocol: [
+        {
+            title: "Protocol Registries",
+            url: "https://iana.org/protocols",
+            snippet:
+                "Protocol parameter registries represent the authoritative record of many of the codes and numbers contained in a variety of Internet protocols.",
+            relevance: 10,
+            personalization: 5,
+            finalScore: 15
+        },
+
+        {
+            title: "Number Resources",
+            url: "https://iana.org/numbers",
+            snippet:
+                "The procedures, policies and technical specifications describe how Internet number resources are administered.",
+            relevance: 4,
+            personalization: 5,
+            finalScore: 9
+        }
+    ]
+};
+
+
+// ==========================================
+// DISPLAY RESULTS
 // ==========================================
 
 function displayResults(query, results) {
@@ -93,127 +165,81 @@ function getSuggestion(query) {
 // SEARCH
 // ==========================================
 
-
-async function performSearch() {
+function performSearch() {
 
     const query =
-        searchInput.value
-            .trim()
-            .toLowerCase();
+        searchInput.value.trim().toLowerCase();
 
-    if (!query) {
+    if (query === "") {
         searchInput.focus();
         return;
     }
 
-    suggestion.textContent =
-        "Searching...";
+    suggestion.textContent = "";
 
-    resultsSection.classList.remove(
-        "hidden"
-    );
+    const correction =
+        getSuggestion(query);
+
+    if (correction) {
+
+        suggestion.innerHTML =
+            `Did you mean <strong>${correction}</strong>?`;
+    }
+
+    if (demoResults[query]) {
+
+        displayResults(
+            query,
+            demoResults[query]
+        );
+
+        return;
+    }
 
     resultsTitle.textContent =
         `Results for "${query}"`;
 
     resultCount.textContent =
-        "Searching...";
+        "0 results";
 
-    try {
+    resultsContainer.innerHTML = `
+        <article class="result-card">
 
-        const response =
-            await fetch(
-                `${API_BASE_URL}/search?q=${encodeURIComponent(query)}`
-            );
+            <div class="result-title">
+                No results found
+            </div>
 
-        if (!response.ok) {
-            throw new Error(
-                `API request failed: ${response.status}`
-            );
-        }
+            <div class="result-snippet">
+                The real C++ search engine will be
+                connected in the next integration stage.
+            </div>
 
-        const data =
-            await response.json();
+        </article>
+    `;
 
-        const results =
-            Array.isArray(data.results)
-                ? data.results
-                : [];
-
-        if (
-            data.queryWasCorrected &&
-            data.correctedQuery &&
-            data.correctedQuery !== query
-        ) {
-
-            suggestion.textContent =
-                `Showing results for "${data.correctedQuery}"`;
-
-        }
-        else {
-
-            suggestion.textContent =
-                "";
-
-        }
-
-        const displayQuery =
-            data.queryWasCorrected &&
-            data.correctedQuery
-                ? data.correctedQuery
-                : query;
-
-        if (data.queryWasCorrected && data.correctedQuery) {
-            searchInput.value = data.correctedQuery;
-        }
-
-        displayResults(
-            displayQuery,
-            results
-        );
-
-    }
-    catch (error) {
-
-        console.error(
-            "Search API error:",
-            error
-        );
-
-        resultsContainer.innerHTML = `
-
-            <article class="result-card">
-
-                <div class="result-title">
-                    Search service unavailable
-                </div>
-
-                <div class="result-snippet">
-                    Unable to connect to the
-                    C++ search engine backend.
-                    Please make sure the API
-                    server is running.
-                </div>
-
-            </article>
-        `;
-
-        resultsTitle.textContent =
-            `Results for "${query}"`;
-
-        resultCount.textContent =
-            "0 results";
-
-        suggestion.textContent =
-            "C++ API connection failed.";
-
-        resultsSection.classList.remove(
-            "hidden"
-        );
-    }
+    resultsSection.classList.remove("hidden");
 }
 
 
+// ==========================================
+// EVENTS
+// ==========================================
+
+searchButton.addEventListener(
+    "click",
+    performSearch
+);
+
+searchInput.addEventListener(
+    "keydown",
+    (event) => {
+
+        if (event.key === "Enter") {
+            performSearch();
+        }
+
+    }
+);
 
 clearButton.addEventListener(
     "click",
