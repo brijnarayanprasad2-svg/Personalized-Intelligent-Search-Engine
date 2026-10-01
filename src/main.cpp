@@ -6,16 +6,22 @@
 #include "../include/WebCrawler.h"
 #include "../include/SearchIndex.h"
 #include "../include/SearchResult.h"
-#include <sstream>
 
 #include <iostream>
 #include <vector>
 #include <string>
 #include <cctype>
 #include <algorithm>
+#include <sstream>
+#include <utility>
+#include <unordered_set>
 
 using namespace std;
-
+typedef unsigned char byte;
+string createSearchSnippet(
+    const string& content,
+    const string& query
+);
 
 // =========================================================
 // QUERY NORMALIZATION
@@ -52,7 +58,6 @@ string normalizeUserQuery(
         }
     }
 
-
     // Remove trailing space
     if (!result.empty() &&
         result.back() == ' ')
@@ -62,10 +67,79 @@ string normalizeUserQuery(
 
     return result;
 }
+// =========================================================
+// COMMON PREFIX LENGTH
+// =========================================================
+
+size_t commonPrefixLength(
+    const string& first,
+    const string& second
+)
+{
+    size_t length =
+        min(
+            first.length(),
+            second.length()
+        );
+
+    size_t i = 0;
+
+    while (i < length &&
+           first[i] == second[i])
+    {
+        i++;
+    }
+
+    return i;
+}
 
 
 // =========================================================
-// QUERY SPELLING CORRECTION
+// SAFE WORD CORRECTION
+// =========================================================
+
+string findSafeCorrection(
+    const string& word,
+    const Trie& trie
+)
+{
+    string correctedWord =
+        trie.findClosestWord(
+            word
+        );
+
+    if (correctedWord.empty() ||
+        correctedWord == word)
+    {
+        return correctedWord;
+    }
+
+    // Avoid aggressive short-word corrections.
+    // Example:
+    // dts -> dns  (should NOT happen)
+    //
+    // Valid examples remain:
+    // dats   -> data
+    // dnss   -> dns
+    // protcol -> protocol
+    // internt -> internet
+    // comptur -> computer
+
+    if (word.length() >= 3 &&
+        commonPrefixLength(
+            word,
+            correctedWord
+        ) < 2)
+    {
+        return word;
+    }
+
+    return correctedWord;
+}
+
+
+// =========================================================
+// QUERY SPELLING CORRECTION + DUPLICATE REMOVAL
 // =========================================================
 
 string correctQuery(
@@ -74,274 +148,120 @@ string correctQuery(
 )
 {
     string correctedQuery;
+
+    unordered_set<string> seen;
+
+    istringstream input(query);
+
     string word;
 
 
-    for (size_t i = 0;
-         i <= query.length();
-         i++)
+    while (input >> word)
     {
-        // Build current word
-        if (i < query.length() &&
-            query[i] != ' ')
+        string correctedWord =
+            findSafeCorrection(
+                word,
+                trie
+            );
+
+
+        if (correctedWord.empty())
         {
-            word += query[i];
+            correctedWord =
+                word;
         }
-        else
+
+
+        // Remove duplicate corrected words
+        // while preserving first occurrence.
+        if (!seen.insert(
+                correctedWord
+            ).second)
         {
-            if (!word.empty())
-            {
-                string correctedWord =
-                    trie.findClosestWord(
-                        word
-                    );
-
-
-                // No correction found
-                if (correctedWord.empty())
-                {
-                    correctedWord =
-                        word;
-                }
-
-
-                if (!correctedQuery.empty())
-                {
-                    correctedQuery += ' ';
-                }
-
-                correctedQuery +=
-                    correctedWord;
-
-                word.clear();
-            }
+            continue;
         }
+
+
+        if (!correctedQuery.empty())
+        {
+            correctedQuery += ' ';
+        }
+
+
+        correctedQuery +=
+            correctedWord;
     }
+
 
     return correctedQuery;
 }
 
 
 // =========================================================
-// GET SEARCH SNIPPET
+// CHECK WHETHER ANY WORD WAS ACTUALLY CORRECTED
 // =========================================================
 
-string createSearchSnippet(
-    const string& content,
-    const string& query
+bool hasSpellingCorrection(
+    const string& query,
+    const Trie& trie
 )
 {
-    if (content.empty())
+    istringstream input(query);
+
+    string word;
+
+
+    while (input >> word)
     {
-        return "";
-    }
-
-
-    const size_t MAX_SNIPPET_LENGTH =
-        220;
-
-
-    string lowerContent =
-        content;
-
-    string lowerQuery =
-        query;
-
-
-    // Convert content to lowercase
-    for (char& ch : lowerContent)
-    {
-        ch =
-            static_cast<char>(
-                tolower(
-                    static_cast<unsigned char>(
-                        ch
-                    )
-                )
+        string correctedWord =
+            findSafeCorrection(
+                word,
+                trie
             );
-    }
 
 
-    // Convert query to lowercase
-    for (char& ch : lowerQuery)
-    {
-        ch =
-            static_cast<char>(
-                tolower(
-                    static_cast<unsigned char>(
-                        ch
-                    )
-                )
-            );
-    }
-
-
-    // -----------------------------------------------------
-    // Try complete query phrase first
-    // -----------------------------------------------------
-
-    size_t matchPosition =
-        lowerContent.find(
-            lowerQuery
-        );
-
-
-    // -----------------------------------------------------
-    // If complete phrase isn't found,
-    // search individual query words.
-    // -----------------------------------------------------
-
-    if (matchPosition ==
-        string::npos)
-    {
-        string queryWord;
-
-        for (size_t i = 0;
-             i <= lowerQuery.length();
-             i++)
+        if (!correctedWord.empty() &&
+            correctedWord != word)
         {
-            if (i < lowerQuery.length() &&
-                lowerQuery[i] != ' ')
-            {
-                queryWord +=
-                    lowerQuery[i];
-            }
-            else
-            {
-                if (!queryWord.empty())
-                {
-                    matchPosition =
-                        lowerContent.find(
-                            queryWord
-                        );
-
-                    if (matchPosition !=
-                        string::npos)
-                    {
-                        break;
-                    }
-
-                    queryWord.clear();
-                }
-            }
+            return true;
         }
     }
 
 
-    // -----------------------------------------------------
-    // No query match
-    // -----------------------------------------------------
-
-    if (matchPosition ==
-        string::npos)
-    {
-        if (content.length() <=
-            MAX_SNIPPET_LENGTH)
-        {
-            return content;
-        }
-
-        return content.substr(
-                   0,
-                   MAX_SNIPPET_LENGTH
-               )
-               + "...";
-    }
-
-
-    // -----------------------------------------------------
-    // Create context around match
-    // -----------------------------------------------------
-
-    const size_t CONTEXT_BEFORE =
-        70;
-
-    const size_t CONTEXT_AFTER =
-        150;
-
-
-    size_t startPosition = 0;
-
-    if (matchPosition >
-        CONTEXT_BEFORE)
-    {
-        startPosition =
-            matchPosition -
-            CONTEXT_BEFORE;
-    }
-
-
-    size_t endPosition =
-        min(
-            content.length(),
-            matchPosition +
-            lowerQuery.length() +
-            CONTEXT_AFTER
-        );
-
-
-    string snippet =
-        content.substr(
-            startPosition,
-            endPosition -
-            startPosition
-        );
-
-
-    // -----------------------------------------------------
-    // Clean beginning
-    // -----------------------------------------------------
-
-    if (startPosition > 0)
-    {
-        size_t firstSpace =
-            snippet.find(' ');
-
-        if (firstSpace !=
-            string::npos)
-        {
-            snippet =
-                snippet.substr(
-                    firstSpace + 1
-                );
-        }
-
-        snippet =
-            "... " + snippet;
-    }
-
-
-    // -----------------------------------------------------
-    // Clean ending
-    // -----------------------------------------------------
-
-    if (endPosition <
-        content.length())
-    {
-        snippet += "...";
-    }
-
-
-    // Final safety limit
-    if (snippet.length() >
-        MAX_SNIPPET_LENGTH)
-    {
-        snippet =
-            snippet.substr(
-                0,
-                MAX_SNIPPET_LENGTH
-            )
-            + "...";
-    }
-
-
-    return snippet;
+    return false;
 }
 
 
 // =========================================================
-// MAIN
+// CHECK WHETHER ALL WORDS EXIST IN TRIE
 // =========================================================
+
+bool allWordsExistInTrie(
+    const string& query,
+    const Trie& trie
+)
+{
+    istringstream input(query);
+
+    string word;
+
+    bool hasWord = false;
+
+
+    while (input >> word)
+    {
+        hasWord = true;
+
+        if (!trie.search(word))
+        {
+            return false;
+        }
+    }
+
+
+    return hasWord;
+}
+
 
 // =========================================================
 // JSON ESCAPING
@@ -394,6 +314,139 @@ string escapeJson(
     return result;
 }
 
+// =========================================================
+// CREATE SEARCH SNIPPET
+// =========================================================
+
+string createSearchSnippet(
+    const string& content,
+    const string& query
+)
+{
+    if (content.empty())
+    {
+        return "";
+    }
+
+    // -----------------------------------------------------
+    // NORMALIZE QUERY
+    // -----------------------------------------------------
+
+    string normalizedQuery =
+        normalizeUserQuery(
+            query
+        );
+
+    if (normalizedQuery.empty())
+    {
+        return content.substr(
+            0,
+            180
+        );
+    }
+
+    // -----------------------------------------------------
+    // NORMALIZE CONTENT
+    // -----------------------------------------------------
+
+    string normalizedContent =
+        normalizeUserQuery(
+            content
+        );
+
+    if (normalizedContent.empty())
+    {
+        return "";
+    }
+
+    // -----------------------------------------------------
+    // FIND FIRST QUERY WORD
+    // -----------------------------------------------------
+
+    istringstream input(
+        normalizedQuery
+    );
+
+    string queryWord;
+
+    size_t bestPosition =
+        string::npos;
+
+    while (input >> queryWord)
+    {
+        size_t position =
+            normalizedContent.find(
+                queryWord
+            );
+
+        if (position != string::npos &&
+            (
+                bestPosition == string::npos ||
+                position < bestPosition
+            ))
+        {
+            bestPosition = position;
+        }
+    }
+
+    // -----------------------------------------------------
+    // NO QUERY WORD FOUND
+    // -----------------------------------------------------
+
+    if (bestPosition == string::npos)
+    {
+        return content.substr(
+            0,
+            180
+        );
+    }
+
+    // -----------------------------------------------------
+    // CREATE SNIPPET WINDOW
+    // -----------------------------------------------------
+
+    const size_t CONTEXT_BEFORE = 70;
+    const size_t CONTEXT_AFTER  = 110;
+
+    size_t start =
+        (
+            bestPosition > CONTEXT_BEFORE
+            ?
+            bestPosition - CONTEXT_BEFORE
+            :
+            0
+        );
+
+    size_t snippetLength =
+        CONTEXT_BEFORE +
+        CONTEXT_AFTER;
+
+    string snippet =
+        normalizedContent.substr(
+            start,
+            snippetLength
+        );
+
+    // -----------------------------------------------------
+    // ADD ELLIPSIS
+    // -----------------------------------------------------
+
+    if (start > 0)
+    {
+        snippet =
+            "... " +
+            snippet;
+    }
+
+    if (start + snippetLength <
+        normalizedContent.length())
+    {
+        snippet +=
+            " ...";
+    }
+
+    return snippet;
+}
 
 // =========================================================
 // API SEARCH RESPONSE
@@ -401,7 +454,7 @@ string escapeJson(
 
 string buildApiSearchResponse(
     const string& query,
-    const Trie& trie,
+    Trie& trie,
     RankingEngine& rankingEngine,
     SearchHistory& searchHistory,
     SearchIndex& searchIndex
@@ -415,7 +468,6 @@ string buildApiSearchResponse(
         normalizeUserQuery(
             query
         );
-
 
     if (normalizedQuery.empty())
     {
@@ -434,16 +486,20 @@ string buildApiSearchResponse(
             trie
         );
 
-
+    // Final query used by autocomplete,
+    // ranking, personalization and page search.
     string searchQuery =
         correctedQuery;
 
-
-    bool queryWasCorrected =
-        (
-            correctedQuery !=
-            normalizedQuery
+        bool spellingCorrected =
+         hasSpellingCorrection(
+          normalizedQuery,
+          trie
         );
+
+     bool queryWasCorrected =
+     spellingCorrected;
+
 
 
     // -----------------------------------------------------
@@ -451,31 +507,29 @@ string buildApiSearchResponse(
     // -----------------------------------------------------
 
     bool exactMatch =
-        trie.search(
-            normalizedQuery
+        allWordsExistInTrie(
+            normalizedQuery,
+            trie
+        );
+
+    bool correctedMatch =
+        (
+            queryWasCorrected &&
+            allWordsExistInTrie(
+                correctedQuery,
+                trie
+            )
         );
 
 
-    bool correctedMatch =
-        false;
-
-
-    if (!exactMatch &&
-        queryWasCorrected)
-    {
-        correctedMatch =
-            trie.search(
-                correctedQuery
-            );
-    }
-
-
     // -----------------------------------------------------
-    // RECORD USER SEARCH
+    // RECORD USER SEARCH HISTORY
     // -----------------------------------------------------
+    // Store the final processed/corrected query so that
+    // spelling variants do not split personalization data.
 
     searchHistory.recordSearch(
-        normalizedQuery
+        searchQuery
     );
 
 
@@ -523,7 +577,6 @@ string buildApiSearchResponse(
             result.getPageID()
         );
 
-
         searchHistory.recordQueryPage(
             searchQuery,
             result.getPageID()
@@ -537,28 +590,31 @@ string buildApiSearchResponse(
 
     ostringstream json;
 
-
     json << "{";
 
 
+    // Original query
     json
         << "\"query\":\""
         << escapeJson(query)
         << "\",";
 
 
+    // Processed query = normalized + corrected + deduplicated
     json
         << "\"processedQuery\":\""
-        << escapeJson(normalizedQuery)
+        << escapeJson(correctedQuery)
         << "\",";
 
 
+    // Corrected query
     json
         << "\"correctedQuery\":\""
         << escapeJson(correctedQuery)
         << "\",";
 
 
+    // Correction flag
     json
         << "\"queryWasCorrected\":"
         << (
@@ -569,6 +625,7 @@ string buildApiSearchResponse(
         << ",";
 
 
+    // Exact match
     json
         << "\"exactMatch\":"
         << (
@@ -579,6 +636,7 @@ string buildApiSearchResponse(
         << ",";
 
 
+    // Corrected match
     json
         << "\"correctedMatch\":"
         << (
@@ -596,7 +654,6 @@ string buildApiSearchResponse(
     json
         << "\"suggestions\":[";
 
-
     for (size_t i = 0;
          i < rankedSuggestions.size();
          i++)
@@ -606,10 +663,8 @@ string buildApiSearchResponse(
             json << ",";
         }
 
-
         const string& suggestion =
             rankedSuggestions[i];
-
 
         json
             << "{"
@@ -625,7 +680,6 @@ string buildApiSearchResponse(
             << "}";
     }
 
-
     json
         << "],";
 
@@ -637,7 +691,6 @@ string buildApiSearchResponse(
     json
         << "\"results\":[";
 
-
     for (size_t i = 0;
          i < pageResults.size();
          i++)
@@ -647,16 +700,13 @@ string buildApiSearchResponse(
             json << ",";
         }
 
-
         const SearchResult& result =
             pageResults[i];
-
 
         double finalScore =
             result.getScore()
             +
             result.getPersonalizationScore();
-
 
         string snippet =
             createSearchSnippet(
@@ -664,10 +714,8 @@ string buildApiSearchResponse(
                 searchQuery
             );
 
-
         json
             << "{";
-
 
         json
             << "\"title\":\""
@@ -676,7 +724,6 @@ string buildApiSearchResponse(
                )
             << "\",";
 
-
         json
             << "\"url\":\""
             << escapeJson(
@@ -684,48 +731,40 @@ string buildApiSearchResponse(
                )
             << "\",";
 
-
         json
             << "\"relevance\":"
             << result.getScore()
             << ",";
-
 
         json
             << "\"queryFrequency\":"
             << result.getQueryFrequencyScore()
             << ",";
 
-
         json
             << "\"pageFrequency\":"
             << result.getPageFrequencyScore()
             << ",";
-
 
         json
             << "\"queryPageScore\":"
             << result.getQueryPageScore()
             << ",";
 
-
         json
             << "\"recencyBonus\":"
             << result.getRecencyBonus()
             << ",";
-
 
         json
             << "\"personalization\":"
             << result.getPersonalizationScore()
             << ",";
 
-
         json
             << "\"finalScore\":"
             << finalScore
             << ",";
-
 
         json
             << "\"snippet\":\""
@@ -734,37 +773,36 @@ string buildApiSearchResponse(
                )
             << "\"";
 
-
         json
             << "}";
     }
 
-
     json
         << "]";
 
-
     json
         << "}";
-
 
     return json.str();
 }
 
 
+// =========================================================
+// MAIN
+// =========================================================
 
-        int main(
-            int argc,
-            char* argv[]
-        )
-        {
-            bool apiMode =
-            (
-                argc > 1 &&
-                string(argv[1]) == "--api"
-            );
+int main(
+    int argc,
+    char* argv[]
+)
+{
+    bool apiMode =
+    (
+        argc > 1 &&
+        string(argv[1]) == "--api"
+    );
 
-    
+
     // =====================================================
     // 1. SYSTEM INITIALIZATION
     // =====================================================
@@ -781,7 +819,7 @@ string buildApiSearchResponse(
 
 
     // Maximum pages
-    WebCrawler crawler(5);
+    WebCrawler crawler(13);
 
 
     // =====================================================
@@ -804,7 +842,6 @@ string buildApiSearchResponse(
         dataLoader.loadWords(
             "data/words.txt"
         );
-
 
     if (words.empty())
     {
@@ -835,13 +872,17 @@ string buildApiSearchResponse(
     cout << "==================================================\n";
 
     cout << "\nStarting web crawler...\n";
-
-
-    crawler.addSeedURL(
-        "https://iana.org/domains/example"
-    );
-
-
+    crawler.addSeedURL("computer_science");
+    crawler.addSeedURL("data_structures"); 
+    crawler.addSeedURL("algorithms");
+    crawler.addSeedURL("cpp_programming");
+    crawler.addSeedURL("object_oriented_programming");
+    crawler.addSeedURL("data_science");
+    crawler.addSeedURL("artificial_intelligence");
+    crawler.addSeedURL("machine_learning");
+    crawler.addSeedURL("internet_protocols");
+    crawler.addSeedURL("database_management");
+    
     crawler.crawl();
 
 
@@ -851,7 +892,6 @@ string buildApiSearchResponse(
 
     vector<WebPage> crawledPages =
         crawler.getPages();
-
 
     cout << "\nCrawled pages available: "
          << crawledPages.size()
@@ -866,7 +906,6 @@ string buildApiSearchResponse(
     cout << "                 SEARCH INDEX\n";
     cout << "==================================================\n";
 
-
     for (size_t i = 0;
          i < crawledPages.size();
          i++)
@@ -879,81 +918,9 @@ string buildApiSearchResponse(
         );
     }
 
-
     cout << "\nSearch index successfully built for "
          << crawledPages.size()
          << " pages.\n";
-
-
-    // =====================================================
-    // 7. PAGE SEARCH DEMONSTRATION
-    // =====================================================
-
-    cout << "\n==================================================\n";
-    cout << "             PAGE SEARCH DEMONSTRATION\n";
-    cout << "==================================================\n";
-
-
-    string testKeyword =
-        "computer";
-
-
-    cout << "\nTest Query: "
-         << testKeyword
-         << endl;
-
-
-    vector<int> testResults =
-        searchIndex.search(
-            testKeyword
-        );
-
-
-    if (testResults.empty())
-    {
-        cout << "No pages found for this keyword.\n";
-    }
-    else
-    {
-        cout << "Matching Pages:\n";
-
-        for (int pageID :
-             testResults)
-        {
-            cout << "  -> Page "
-                 << pageID
-                 << endl;
-        }
-    }
-
-
-    // =====================================================
-    // 8. SEARCH INTERFACE
-    // =====================================================
-
-    cout << "\n==================================================\n";
-    cout << "                SEARCH INTERFACE\n";
-    cout << "==================================================\n";
-
-
-    cout << "\nYou can search the vocabulary "
-         << "and crawled pages.\n";
-
-    cout << "Spelling correction is enabled.\n";
-
-    cout << "Search snippets are enabled.\n";
-
-    cout << "Type 'exit' to close the application.\n";
-
-
-    string query;
-
-    string normalizedQuery;
-
-    string correctedQuery;
-
-    string searchQuery;
-
 
 
     // =====================================================
@@ -983,6 +950,72 @@ string buildApiSearchResponse(
 
         return 0;
     }
+
+
+    // =====================================================
+    // 7. PAGE SEARCH DEMONSTRATION
+    // =====================================================
+
+    cout << "\n==================================================\n";
+    cout << "             PAGE SEARCH DEMONSTRATION\n";
+    cout << "==================================================\n";
+
+    string testKeyword =
+        "computer";
+
+    cout << "\nTest Query: "
+         << testKeyword
+         << endl;
+
+    vector<int> testResults =
+        searchIndex.search(
+            testKeyword
+        );
+
+    if (testResults.empty())
+    {
+        cout << "No pages found for this keyword.\n";
+    }
+    else
+    {
+        cout << "Matching Pages:\n";
+
+        for (int pageID :
+             testResults)
+        {
+            cout << "  -> Page "
+                 << pageID
+                 << endl;
+        }
+    }
+
+
+    // =====================================================
+    // 8. SEARCH INTERFACE
+    // =====================================================
+
+    cout << "\n==================================================\n";
+    cout << "                SEARCH INTERFACE\n";
+    cout << "==================================================\n";
+
+    cout << "\nYou can search the vocabulary "
+         << "and crawled pages.\n";
+
+    cout << "Spelling correction is enabled.\n";
+
+    cout << "Search snippets are enabled.\n";
+
+    cout << "Type 'exit' to close the application.\n";
+
+
+    string query;
+
+    string normalizedQuery;
+
+    string correctedQuery;
+
+    string searchQuery;
+
 
     while (true)
     {
@@ -1031,11 +1064,6 @@ string buildApiSearchResponse(
         }
 
 
-        cout << "Processed Query: "
-             << normalizedQuery
-             << endl;
-
-
         // =================================================
         // SPELLING CORRECTION
         // =================================================
@@ -1046,17 +1074,22 @@ string buildApiSearchResponse(
                 trie
             );
 
-
         searchQuery =
             correctedQuery;
 
+        bool spellingCorrected =
+          hasSpellingCorrection(
+         normalizedQuery,
+         trie
+        );
 
         bool queryWasCorrected =
-            (
-                correctedQuery !=
-                normalizedQuery
-            );
 
+         spellingCorrected;
+
+        // =================================================
+        // SHOW CORRECTION
+        // =================================================
 
         if (queryWasCorrected)
         {
@@ -1066,29 +1099,44 @@ string buildApiSearchResponse(
                  << endl;
         }
 
+        correctedQuery =
+            correctQuery(
+            normalizedQuery,
+            trie
+        );
+
+        searchQuery =
+          correctedQuery;
+
+          
+        // =================================================
+        // DISPLAY FINAL PROCESSED QUERY
+        // =================================================
+
+        cout << "Processed Query: "
+             << searchQuery
+             << endl;
+
+
 
         // =================================================
         // EXACT SEARCH
         // =================================================
 
         bool exactMatch =
-            trie.search(
-                normalizedQuery
+            allWordsExistInTrie(
+                normalizedQuery,
+                trie
             );
 
-
         bool correctedMatch =
-            false;
-
-
-        if (!exactMatch &&
-            queryWasCorrected)
-        {
-            correctedMatch =
-                trie.search(
-                    correctedQuery
-                );
-        }
+        (
+            queryWasCorrected &&
+            allWordsExistInTrie(
+                correctedQuery,
+                trie
+            )
+        );
 
 
         if (exactMatch)
@@ -1111,13 +1159,12 @@ string buildApiSearchResponse(
         // RECORD USER SEARCH HISTORY
         // =================================================
         //
-        // IMPORTANT:
-        // Store what the user actually typed,
-        // not the automatically corrected query.
+        // Store the final processed/corrected query so that
+        // spelling variants do not split personalization data.
         // =================================================
 
         searchHistory.recordSearch(
-            normalizedQuery
+            correctedQuery
         );
 
 
@@ -1142,7 +1189,6 @@ string buildApiSearchResponse(
                 searchHistory
             );
 
-
         cout << "\nRanked Suggestions:\n";
 
 
@@ -1158,7 +1204,6 @@ string buildApiSearchResponse(
             {
                 const string& suggestion =
                     rankedSuggestions[i];
-
 
                 cout << "  "
                      << i + 1
@@ -1196,7 +1241,6 @@ string buildApiSearchResponse(
                 result.getPageID()
             );
 
-
             searchHistory.recordQueryPage(
                 searchQuery,
                 result.getPageID()
@@ -1227,51 +1271,42 @@ string buildApiSearchResponse(
                      << i + 1
                      << endl;
 
-
                 cout << "  Title                  : "
                      << pageResults[i].getTitle()
                      << endl;
-
 
                 cout << "  URL                    : "
                      << pageResults[i].getURL()
                      << endl;
 
-
                 cout << "  Relevance Score        : "
                      << pageResults[i].getScore()
                      << endl;
-
 
                 cout << "  Query Frequency Score  : "
                      << pageResults[i]
                             .getQueryFrequencyScore()
                      << endl;
 
-
                 cout << "  Page Frequency Score   : "
                      << pageResults[i]
                             .getPageFrequencyScore()
                      << endl;
-
 
                 cout << "  Query-Page Score       : "
                      << pageResults[i]
                             .getQueryPageScore()
                      << endl;
 
-
                 cout << "  Recency Bonus          : "
                      << pageResults[i]
                             .getRecencyBonus()
                      << endl;
 
-
                 cout << "  Personalization        : "
                      << pageResults[i]
                             .getPersonalizationScore()
                      << endl;
-
 
                 cout << "  Final Score            : "
                      << pageResults[i].getScore()
@@ -1291,7 +1326,6 @@ string buildApiSearchResponse(
                             .getContent(),
                         searchQuery
                     );
-
 
                 cout << "  Snippet                : "
                      << snippet
@@ -1316,11 +1350,9 @@ string buildApiSearchResponse(
     cout << "              CRAWLED PAGE SUMMARY\n";
     cout << "==================================================\n";
 
-
     cout << "\nTotal pages stored: "
          << crawledPages.size()
          << endl;
-
 
     for (size_t i = 0;
          i < crawledPages.size();
@@ -1330,16 +1362,13 @@ string buildApiSearchResponse(
              << i + 1
              << endl;
 
-
         cout << "  Title        : "
              << crawledPages[i].getTitle()
              << endl;
 
-
         cout << "  URL          : "
              << crawledPages[i].getURL()
              << endl;
-
 
         cout << "  Page Searches: "
              << searchHistory.getPageSearchFrequency(
@@ -1348,7 +1377,6 @@ string buildApiSearchResponse(
                     )
                 )
              << endl;
-
 
         cout << "  Content      : "
              << crawledPages[i].getContent()
@@ -1364,11 +1392,9 @@ string buildApiSearchResponse(
     cout << "          SEARCH ENGINE SHUTTING DOWN\n";
     cout << "==================================================\n";
 
-
     cout << "\nThank you for using the "
          << "Personalized Intelligent "
          << "Search Engine.\n";
-
 
     return 0;
 }

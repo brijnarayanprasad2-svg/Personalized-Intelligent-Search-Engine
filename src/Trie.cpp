@@ -171,15 +171,9 @@ int Trie::calculateEditDistance(
             second.length()
         );
 
-    // Keep the smaller string on the column side
-    // to reduce memory usage.
-    if (n < m)
-    {
-        return calculateEditDistance(
-            second,
-            first
-        );
-    }
+
+    // Only two rows are used.
+    // Space complexity = O(m)
 
     vector<int> previous(
         m + 1
@@ -189,6 +183,7 @@ int Trie::calculateEditDistance(
         m + 1
     );
 
+
     // Base case
     for (int j = 0;
          j <= m;
@@ -196,6 +191,7 @@ int Trie::calculateEditDistance(
     {
         previous[j] = j;
     }
+
 
     for (int i = 1;
          i <= n;
@@ -207,18 +203,19 @@ int Trie::calculateEditDistance(
              j <= m;
              j++)
         {
-            const int insertion =
+            int insertion =
                 current[j - 1] + 1;
 
-            const int deletion =
+            int deletion =
                 previous[j] + 1;
 
-            const int replacement =
+            int replacement =
                 previous[j - 1] +
                 (
                     first[i - 1] !=
                     second[j - 1]
                 );
+
 
             current[j] =
                 min(
@@ -237,35 +234,7 @@ int Trie::calculateEditDistance(
 }
 
 
-
-static int calculateCommonPrefixLength(
-    const string& first,
-    const string& second
-)
-{
-    const size_t limit =
-        min(
-            first.length(),
-            second.length()
-        );
-
-    int length = 0;
-
-    while (
-        length <
-        static_cast<int>(limit) &&
-        first[length] ==
-        second[length]
-    )
-    {
-        length++;
-    }
-
-    return length;
-}
-
-
-
+// =========================================================
 // FIND CLOSEST DICTIONARY WORD
 // =========================================================
 
@@ -278,31 +247,22 @@ string Trie::findClosestWord(
         return "";
     }
 
-    // =====================================================
-    // 1. EXACT MATCH
-    // =====================================================
 
+    // Already correct
     if (search(word))
     {
         return word;
     }
 
-    // =====================================================
-    // 2. SAFE DISTANCE THRESHOLD
-    // =====================================================
 
-    int maxDistance = 0;
+    // Limit allowed edit distance
+    int maxDistance;
 
-    if (word.length() <= 2)
-    {
-        // Do not aggressively correct very short words.
-        return "";
-    }
-    else if (word.length() <= 4)
+    if (word.length() <= 3)
     {
         maxDistance = 1;
     }
-    else if (word.length() <= 7)
+    else if (word.length() <= 6)
     {
         maxDistance = 2;
     }
@@ -311,33 +271,22 @@ string Trie::findClosestWord(
         maxDistance = 3;
     }
 
-    // =====================================================
-    // 3. BEST CANDIDATE
-    // =====================================================
 
     string closestWord;
 
     int bestDistance =
         maxDistance + 1;
 
-    int bestPrefixLength =
-        -1;
 
-    int bestLengthDifference =
-        maxDistance + 1;
-
-    // =====================================================
-    // 4. CHECK DICTIONARY
-    // =====================================================
-
+    // Compare against dictionary
     for (const string& candidate :
          dictionaryWords)
     {
         // -------------------------------------------------
-        // LENGTH FILTER
+        // Fast filtering based on word length
         // -------------------------------------------------
 
-        const int lengthDifference =
+        int lengthDifference =
             abs(
                 static_cast<int>(
                     word.length()
@@ -347,130 +296,64 @@ string Trie::findClosestWord(
                 )
             );
 
+
         if (lengthDifference >
             maxDistance)
         {
             continue;
         }
 
+
         // -------------------------------------------------
-        // EDIT DISTANCE
+        // Calculate edit distance
         // -------------------------------------------------
 
-        const int distance =
+        int distance =
             calculateEditDistance(
                 word,
                 candidate
             );
 
-        if (distance >
-            maxDistance)
-        {
-            continue;
-        }
 
         // -------------------------------------------------
-        // COMMON PREFIX
+        // Better candidate
         // -------------------------------------------------
 
-        const int prefixLength =
-            calculateCommonPrefixLength(
-                word,
-                candidate
-            );
-
-        // -------------------------------------------------
-        // BETTER CANDIDATE
-        // -------------------------------------------------
-
-        bool betterCandidate = false;
-
-        if (distance <
-            bestDistance)
-        {
-            betterCandidate = true;
-        }
-        else if (
-            distance ==
-            bestDistance
-        )
-        {
-            // Prefer candidates preserving
-            // more characters from the beginning.
-            if (
-                prefixLength >
-                bestPrefixLength
-            )
-            {
-                betterCandidate = true;
-            }
-            else if (
-                prefixLength ==
-                bestPrefixLength
-            )
-            {
-                // Prefer smaller length difference.
-                if (
-                    lengthDifference <
-                    bestLengthDifference
-                )
-                {
-                    betterCandidate = true;
-                }
-                else if (
-                    lengthDifference ==
-                    bestLengthDifference
-                )
-                {
-                    // Prefer shorter word.
-                    if (
-                        closestWord.empty() ||
-                        candidate.length() <
-                        closestWord.length()
-                    )
-                    {
-                        betterCandidate = true;
-                    }
-                    else if (
-                        candidate.length() ==
-                        closestWord.length() &&
-                        candidate <
-                        closestWord
-                    )
-                    {
-                        // Final deterministic tie-break.
-                        betterCandidate = true;
-                    }
-                }
-            }
-        }
-
-        if (betterCandidate)
+        if (distance < bestDistance)
         {
             bestDistance =
                 distance;
 
-            bestPrefixLength =
-                prefixLength;
+            closestWord =
+                candidate;
+        }
 
-            bestLengthDifference =
-                lengthDifference;
 
+        // -------------------------------------------------
+        // Tie breaker
+        // -------------------------------------------------
+
+        else if (
+            distance == bestDistance &&
+            !closestWord.empty() &&
+            candidate.length() <
+                closestWord.length()
+        )
+        {
             closestWord =
                 candidate;
         }
     }
 
-    // =====================================================
-    // 5. RETURN RESULT
-    // =====================================================
 
-    if (!closestWord.empty() &&
-        bestDistance <= maxDistance)
+    // -----------------------------------------------------
+    // Return valid correction
+    // -----------------------------------------------------
+
+    if (bestDistance <= maxDistance)
     {
         return closestWord;
     }
 
     return "";
 }
-
