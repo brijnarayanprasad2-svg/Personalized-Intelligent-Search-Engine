@@ -3,180 +3,507 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>PISE | Intelligent Search</title>
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
 
-    <link rel="stylesheet" href="./style.css">
+    <meta
+        name="description"
+        content="PISE - Personalized Intelligent Search Engine"
+    >
+
+    <title>PISE | Personalized Intelligent Search</title>
+
+    <link
+        rel="stylesheet"
+        href="./style.css"
+    >
 </head>
+
 
 <body>
 
-    <canvas id="threeCanvas"></canvas>
+    <!-- =====================================================
+         3D BACKGROUND
+         ===================================================== -->
 
-    <header class="navbar">
-
-        <div class="brand">
-            <div class="brand-icon">P</div>
-
-            <div>
-                <div class="brand-name">PISE</div>
-                <div class="brand-subtitle">INTELLIGENT SEARCH</div>
-            </div>
-        </div>
-
-        <div class="status">
-            <span class="status-dot"></span>
-            Search Engine Active
-        </div>
-
-    </header>
+    <canvas
+        id="threeCanvas"
+        aria-hidden="true"
+    ></canvas>
 
 
-    <main class="main-container">
+    <!-- =====================================================
+         MAIN APPLICATION
+         ===================================================== -->
 
-        <section class="hero">
-
-            <div class="hero-badge">
-                PERSONALIZED SEARCH TECHNOLOGY
-            </div>
-
-            <h1>
-                Search
-                <span>Beyond Keywords.</span>
-            </h1>
-
-            <p class="hero-description">
-                A personalized intelligent search engine powered by
-                data structures, ranking, spelling correction and
-                user search behaviour.
-            </p>
+    <div class="app-shell">
 
 
-            <div class="search-wrapper">
+        <!-- =================================================
+             NAVBAR
+             ================================================= -->
 
-                <div class="search-box">
+        <header class="navbar">
 
-                    <div class="search-icon">
-                        SEARCH
+            <a
+                href="#"
+                class="brand"
+                aria-label="PISE home"
+            >
+
+                <div class="brand-mark">
+                    P
+                </div>
+
+                <div class="brand-text">
+
+                    <div class="brand-name">
+                        PISE
                     </div>
 
-                    <input
-                        id="searchInput"
-                        type="text"
-                        placeholder="Search the intelligent web..."
-                        autocomplete="off"
-                    >
+                    <div class="brand-subtitle">
+                        INTELLIGENT SEARCH
+                    </div>
+
+                </div>
+
+            </a>
+
+
+            <div class="navbar-right">
+
+                <div class="system-status">
+
+                    <span class="status-dot"></span>
+
+                    <span>
+                        Search Engine Active
+                    </span>
+
+                </div>
+
+                <div class="engine-badge">
+                    C++ CORE
+                </div>
+
+            </div>
+
+        </header>
+
+
+        <!-- =================================================
+             MAIN CONTENT
+             ================================================= -->
+
+        <main class="main-container">
+
+
+            <!-- =============================================
+                 HERO
+                 ============================================= -->
+
+            <section class="hero">
+
+
+                <div class="hero-badge">
+
+                    <span class="badge-pulse"></span>
+
+                    PERSONALIZED SEARCH TECHNOLOGY
+
+                </div>
+
+
+                <h1 class="hero-title">
+
+                    Search
+
+                    <span class="hero-accent">
+                        beyond keywords.
+                    </span>
+
+                </h1>
+
+
+                <p class="hero-description">
+
+                    Explore a personalized search experience
+                    powered by Trie-based autocomplete,
+                    intelligent ranking, spelling correction
+                    and user search behaviour.
+
+                </p>
+
+
+                <!-- =========================================
+                     SEARCH AREA
+                     ========================================= -->
+
+                <div class="search-area">
+
+
+                    <div class="search-box">
+
+
+                        <div
+                            class="search-icon"
+                            aria-hidden="true"
+                        >
+                            <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+                                <circle
+                                    cx="11"
+                                    cy="11"
+                                    r="7"
+                                ></circle>
+
+                                <line
+                                    x1="16.5"
+                                    y1="16.5"
+                                    x2="22"
+                                    y2="22"
+                                ></line>
+                            </svg>
+                        </div>
+
+
+                        <input
+                            id="searchInput"
+                            type="text"
+                            placeholder="Search the intelligent web..."
+                            autocomplete="off"
+                            spellcheck="false"
+                            aria-label="Search query"
+                        >
+
+
+                        <button
+                            id="clearButton"
+                            class="clear-button"
+                            type="button"
+                            aria-label="Clear search"
+                            title="Clear"
+                        >
+                            <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                            >
+                                <line
+                                    x1="6"
+                                    y1="6"
+                                    x2="18"
+                                    y2="18"
+                                ></line>
+
+                                <line
+                                    x1="18"
+                                    y1="6"
+                                    x2="6"
+                                    y2="18"
+                                ></line>
+                            </svg>
+                        </button>
+
+
+                        <button
+                            id="searchButton"
+                            class="search-button"
+                            type="button"
+                        >
+
+                            <span>
+                                Search
+                            </span>
+
+                            <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+                                <line
+                                    x1="5"
+                                    y1="12"
+                                    x2="18"
+                                    y2="12"
+                                ></line>
+
+                                <polyline
+                                    points="12 6 18 12 12 18"
+                                ></polyline>
+                            </svg>
+
+                        </button>
+
+                    </div>
+
+
+                    <!-- =====================================
+                         SUGGESTION / SPELLING MESSAGE
+                         ===================================== -->
+
+                    <div
+                        id="suggestion"
+                        class="suggestion"
+                        aria-live="polite"
+                    ></div>
+
+
+                </div>
+
+
+                <!-- =========================================
+                     QUICK SEARCHES
+                     ========================================= -->
+
+                <div class="quick-searches">
+
+                    <span class="quick-label">
+                        Try
+                    </span>
+
 
                     <button
-                        id="clearButton"
-                        class="clear-button"
+                        class="quick-search"
+                        data-query="internet"
                         type="button"
                     >
-                        X
+                        Internet
                     </button>
 
+
                     <button
-                        id="searchButton"
-                        class="search-button"
+                        class="quick-search"
+                        data-query="dns"
                         type="button"
                     >
-                        Search →
+                        DNS
+                    </button>
+
+
+                    <button
+                        class="quick-search"
+                        data-query="protocol"
+                        type="button"
+                    >
+                        Protocol
+                    </button>
+
+
+                    <button
+                        class="quick-search"
+                        data-query="data science"
+                        type="button"
+                    >
+                        Data Science
+                    </button>
+
+
+                    <button
+                        class="quick-search"
+                        data-query="machine learning"
+                        type="button"
+                    >
+                        Machine Learning
                     </button>
 
                 </div>
 
+
+                <!-- =========================================
+                     SEARCH ENGINE CAPABILITIES
+                     ========================================= -->
+
+                <div class="capability-row">
+
+
+                    <div class="capability">
+
+                        <div class="capability-icon">
+                            T
+                        </div>
+
+                        <div>
+                            <strong>
+                                Trie
+                            </strong>
+
+                            <span>
+                                Fast autocomplete
+                            </span>
+                        </div>
+
+                    </div>
+
+
+                    <div class="capability">
+
+                        <div class="capability-icon">
+                            R
+                        </div>
+
+                        <div>
+                            <strong>
+                                Ranking
+                            </strong>
+
+                            <span>
+                                Relevance + personalization
+                            </span>
+                        </div>
+
+                    </div>
+
+
+                    <div class="capability">
+
+                        <div class="capability-icon">
+                            W
+                        </div>
+
+                        <div>
+                            <strong>
+                                Web Index
+                            </strong>
+
+                            <span>
+                                10 indexed pages
+                            </span>
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+            </section>
+
+
+            <!-- =================================================
+                 RESULTS
+                 ================================================= -->
+
+            <section
+                id="resultsSection"
+                class="results-section hidden"
+            >
+
+
+                <div class="results-top">
+
+
+                    <div class="results-heading">
+
+
+                        <div class="results-label">
+
+                            <span class="results-label-line"></span>
+
+                            SEARCH RESULTS
+
+                        </div>
+
+
+                        <h2 id="resultsTitle">
+                            Results
+                        </h2>
+
+                    </div>
+
+
+                    <div
+                        id="resultCount"
+                        class="result-count"
+                    >
+                        0 results
+                    </div>
+
+
+                </div>
+
+
                 <div
-                    id="suggestion"
-                    class="suggestion"
+                    id="resultsContainer"
+                    class="results-container"
                 ></div>
 
-            </div>
+
+            </section>
 
 
-            <div class="quick-searches">
+        </main>
 
-                <span>Try:</span>
 
-                <button
-                    class="quick-search"
-                    data-query="internet"
-                    type="button"
-                >
-                    internet
-                </button>
+        <!-- =================================================
+             FOOTER
+             ================================================= -->
 
-                <button
-                    class="quick-search"
-                    data-query="dns"
-                    type="button"
-                >
-                    dns
-                </button>
+        <footer class="footer">
 
-                <button
-                    class="quick-search"
-                    data-query="protocol"
-                    type="button"
-                >
-                    protocol
-                </button>
+
+            <div class="footer-left">
+
+                <span class="footer-brand">
+                    PISE
+                </span>
+
+                <span class="footer-divider"></span>
+
+                <span>
+                    Personalized Intelligent Search Engine
+                </span>
 
             </div>
 
-        </section>
 
+            <div class="footer-right">
 
-        <section
-            id="resultsSection"
-            class="results-section hidden"
-        >
+                <span>
+                    DS &amp; OOP
+                </span>
 
-            <div class="results-top">
+                <span class="footer-dot">
+                    •
+                </span>
 
-                <div>
-                    <div class="results-label">
-                        SEARCH RESULTS
-                    </div>
+                <span>
+                    C++ Core
+                </span>
 
-                    <h2 id="resultsTitle">
-                        Results
-                    </h2>
-                </div>
+                <span class="footer-dot">
+                    •
+                </span>
 
-                <div
-                    id="resultCount"
-                    class="result-count"
-                >
-                    0 results
-                </div>
+                <span>
+                    Search API
+                </span>
 
             </div>
 
-            <div
-                id="resultsContainer"
-                class="results-container"
-            ></div>
 
-        </section>
-
-    </main>
+        </footer>
 
 
-    <footer class="footer">
+    </div>
 
-        <span>PISE</span>
 
-        <span>
-            Personalized Intelligent Search Engine
-        </span>
-
-        <span>
-            DS & OOP Based System
-        </span>
-
-    </footer>
-
+    <!-- =====================================================
+         JAVASCRIPT
+         ===================================================== -->
 
     <script src="./script.js"></script>
 
