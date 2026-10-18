@@ -1,7 +1,24 @@
+
 #ifndef APISERVER_H
 #define APISERVER_H
 
-#include <winsock2.h>
+#ifdef _WIN32
+    #include <winsock2.h>
+    #include <ws2tcpip.h>
+#else
+    #include <sys/types.h>
+    #include <sys/socket.h>
+    #include <netinet/in.h>
+    #include <arpa/inet.h>
+    #include <unistd.h>
+
+    using SOCKET = int;
+
+    #define INVALID_SOCKET (-1)
+    #define SOCKET_ERROR (-1)
+    #define closesocket close
+    #define SD_BOTH SHUT_RDWR
+#endif
 
 #include <atomic>
 #include <functional>
@@ -15,26 +32,18 @@ public:
 
     explicit ApiServer(int port = 8080);
 
-    void setRequestHandler(
-        RequestHandler handler
-    );
+    void setRequestHandler(RequestHandler handler);
 
     void run();
-
     void stop();
 
 private:
     int port;
-
     RequestHandler requestHandler;
-
     std::atomic<bool> running;
-
     SOCKET listenSocket;
 
-    void handleClient(
-        SOCKET clientSocket
-    );
+    void handleClient(SOCKET clientSocket);
 
     std::string buildHttpResponse(
         int statusCode,

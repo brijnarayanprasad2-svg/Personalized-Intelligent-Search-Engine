@@ -15,13 +15,13 @@
 #include <sstream>
 #include <utility>
 #include <unordered_set>
+#include <cstdlib>
 
 using namespace std;
 
 string createSearchSnippet(
-    const string& content,
-    const string& query
-)
+    const string &content,
+    const string &query)
 {
     if (content.empty())
         return "No preview available.";
@@ -33,19 +33,19 @@ string createSearchSnippet(
         lowerContent.begin(),
         lowerContent.end(),
         lowerContent.begin(),
-        [](unsigned char ch) {
+        [](unsigned char ch)
+        {
             return static_cast<char>(tolower(ch));
-        }
-    );
+        });
 
     transform(
         lowerQuery.begin(),
         lowerQuery.end(),
         lowerQuery.begin(),
-        [](unsigned char ch) {
+        [](unsigned char ch)
+        {
             return static_cast<char>(tolower(ch));
-        }
-    );
+        });
 
     // First, search for the complete query phrase.
     size_t position = lowerContent.find(lowerQuery);
@@ -64,8 +64,7 @@ string createSearchSnippet(
                 wordStart,
                 wordEnd == string::npos
                     ? string::npos
-                    : wordEnd - wordStart
-            );
+                    : wordEnd - wordStart);
 
             position = lowerContent.find(word);
 
@@ -107,8 +106,7 @@ string createSearchSnippet(
 // =========================================================
 
 string normalizeUserQuery(
-    const string& query
-)
+    const string &query)
 {
     string result;
 
@@ -118,15 +116,13 @@ string normalizeUserQuery(
     {
         unsigned char c =
             static_cast<unsigned char>(
-                ch
-            );
+                ch);
 
         if (isalnum(c))
         {
             result +=
                 static_cast<char>(
-                    tolower(c)
-                );
+                    tolower(c));
 
             lastWasSpace = false;
         }
@@ -147,22 +143,11 @@ string normalizeUserQuery(
     return result;
 }
 
-
 // =========================================================
 // COMMON SEARCH ALIAS EXPANSION
-// =========================================================
-// Handles common short forms when the surrounding words make
-// the intended topic clear. This keeps normal words untouched.
-//
-// Examples:
-// data ds science  -> data data science science
-// data structures ds -> data structures data structures
-// machine ml learning -> machine machine learning learning
-// ai intelligence -> artificial intelligence intelligence
 
 string expandCommonSearchAliases(
-    const string& query
-)
+    const string &query)
 {
     istringstream input(query);
     vector<string> words;
@@ -179,7 +164,7 @@ string expandCommonSearchAliases(
     bool hasIntelligence = false;
     bool hasManagement = false;
 
-    for (const string& item : words)
+    for (const string &item : words)
     {
         if (item == "science")
             hasScience = true;
@@ -200,7 +185,7 @@ string expandCommonSearchAliases(
 
     string result;
 
-    for (const string& item : words)
+    for (const string &item : words)
     {
         string replacement;
 
@@ -239,15 +224,13 @@ string expandCommonSearchAliases(
     return result;
 }
 
-
 // =========================================================
 // QUERY SPELLING CORRECTION
 // =========================================================
 
 string correctQuery(
-    const string& query,
-    const Trie& trie
-)
+    const string &query,
+    const Trie &trie)
 {
     string correctedQuery;
     unordered_set<string> seen;
@@ -259,8 +242,7 @@ string correctQuery(
     {
         string correctedWord =
             trie.findClosestWord(
-                word
-            );
+                word);
 
         // No safe correction found
         if (correctedWord.empty())
@@ -270,8 +252,8 @@ string correctQuery(
 
         // Remove duplicate corrected words
         if (!seen.insert(
-                correctedWord
-            ).second)
+                     correctedWord)
+                 .second)
         {
             continue;
         }
@@ -288,15 +270,13 @@ string correctQuery(
     return correctedQuery;
 }
 
-
 // =========================================================
 // CHECK WHETHER ALL WORDS EXIST IN TRIE
 // =========================================================
 
 bool allWordsExistInTrie(
-    const string& query,
-    const Trie& trie
-)
+    const string &query,
+    const Trie &trie)
 {
     istringstream input(query);
     string word;
@@ -316,14 +296,12 @@ bool allWordsExistInTrie(
     return hasWord;
 }
 
-
 // =========================================================
 // JSON ESCAPING
 // =========================================================
 
 string escapeJson(
-    const string& value
-)
+    const string &value)
 {
     string result;
 
@@ -331,55 +309,53 @@ string escapeJson(
     {
         switch (ch)
         {
-            case '\"':
-                result += "\\\"";
-                break;
+        case '\"':
+            result += "\\\"";
+            break;
 
-            case '\\':
-                result += "\\\\";
-                break;
+        case '\\':
+            result += "\\\\";
+            break;
 
-            case '\b':
-                result += "\\b";
-                break;
+        case '\b':
+            result += "\\b";
+            break;
 
-            case '\f':
-                result += "\\f";
-                break;
+        case '\f':
+            result += "\\f";
+            break;
 
-            case '\n':
-                result += "\\n";
-                break;
+        case '\n':
+            result += "\\n";
+            break;
 
-            case '\r':
-                result += "\\r";
-                break;
+        case '\r':
+            result += "\\r";
+            break;
 
-            case '\t':
-                result += "\\t";
-                break;
+        case '\t':
+            result += "\\t";
+            break;
 
-            default:
-                result += ch;
-                break;
+        default:
+            result += ch;
+            break;
         }
     }
 
     return result;
 }
 
-
 // =========================================================
 // API SEARCH RESPONSE
 // =========================================================
 
 string buildApiSearchResponse(
-    const string& query,
-    Trie& trie,
-    RankingEngine& rankingEngine,
-    SearchHistory& searchHistory,
-    SearchIndex& searchIndex
-)
+    const string &query,
+    Trie &trie,
+    RankingEngine &rankingEngine,
+    SearchHistory &searchHistory,
+    SearchIndex &searchIndex)
 {
     // -----------------------------------------------------
     // NORMALIZE QUERY
@@ -387,15 +363,12 @@ string buildApiSearchResponse(
 
     string normalizedQuery =
         normalizeUserQuery(
-            query
-        );
+            query);
 
     if (normalizedQuery.empty())
     {
-        return
-            "{\"error\":\"Please enter a valid search query.\"}";
+        return "{\"error\":\"Please enter a valid search query.\"}";
     }
-
 
     // -----------------------------------------------------
     // COMMON SEARCH ALIASES
@@ -403,9 +376,7 @@ string buildApiSearchResponse(
 
     string expandedQuery =
         expandCommonSearchAliases(
-            normalizedQuery
-        );
-
+            normalizedQuery);
 
     // -----------------------------------------------------
     // SPELLING CORRECTION
@@ -414,8 +385,7 @@ string buildApiSearchResponse(
     string correctedQuery =
         correctQuery(
             expandedQuery,
-            trie
-        );
+            trie);
 
     // Final query used by autocomplete,
     // ranking, personalization and page search.
@@ -423,11 +393,8 @@ string buildApiSearchResponse(
         correctedQuery;
 
     bool queryWasCorrected =
-        (
-            correctedQuery !=
-            normalizedQuery
-        );
-
+        (correctedQuery !=
+         normalizedQuery);
 
     // -----------------------------------------------------
     // EXACT MATCH
@@ -436,18 +403,20 @@ string buildApiSearchResponse(
     bool exactMatch =
         allWordsExistInTrie(
             normalizedQuery,
-            trie
-        );
+            trie);
 
     bool correctedMatch =
-        (
-            queryWasCorrected &&
-            allWordsExistInTrie(
-                correctedQuery,
-                trie
-            )
-        );
+        (queryWasCorrected &&
+         allWordsExistInTrie(
+             correctedQuery,
+             trie));
 
+    // -----------------------------------------------------
+    // RECORD USER SEARCH HISTORY
+    // -----------------------------------------------------
+
+    searchHistory.recordSearch(
+        searchQuery);
 
     // -----------------------------------------------------
     // AUTOCOMPLETE
@@ -455,9 +424,7 @@ string buildApiSearchResponse(
 
     vector<string> suggestions =
         trie.autocomplete(
-            searchQuery
-        );
-
+            searchQuery);
 
     // -----------------------------------------------------
     // RANK SUGGESTIONS
@@ -467,9 +434,7 @@ string buildApiSearchResponse(
         rankingEngine.rankSuggestions(
             suggestions,
             searchQuery,
-            searchHistory
-        );
-
+            searchHistory);
 
     // -----------------------------------------------------
     // SEARCH WEB PAGES
@@ -478,35 +443,22 @@ string buildApiSearchResponse(
     vector<SearchResult> pageResults =
         searchIndex.searchPages(
             searchQuery,
-            searchHistory
-        );
-
-
-    // Record this query only after ranking is complete. This keeps
-    // a search from boosting its own results; the updated frequency
-    // is still available when the response is serialized below.
-    searchHistory.recordSearch(
-        searchQuery
-    );
-
+            searchHistory);
 
     // -----------------------------------------------------
     // RECORD PAGE SEARCH HISTORY
     // -----------------------------------------------------
 
-    for (const SearchResult& result :
+    for (const SearchResult &result :
          pageResults)
     {
         searchHistory.recordPageSearch(
-            result.getPageID()
-        );
+            result.getPageID());
 
         searchHistory.recordQueryPage(
             searchQuery,
-            result.getPageID()
-        );
+            result.getPageID());
     }
-
 
     // -----------------------------------------------------
     // BUILD JSON
@@ -516,13 +468,11 @@ string buildApiSearchResponse(
 
     json << "{";
 
-
     // Original query
     json
         << "\"query\":\""
         << escapeJson(query)
         << "\",";
-
 
     // Processed query = normalized + corrected + deduplicated
     json
@@ -530,46 +480,35 @@ string buildApiSearchResponse(
         << escapeJson(searchQuery)
         << "\",";
 
-
     // Corrected query
     json
         << "\"correctedQuery\":\""
         << escapeJson(correctedQuery)
         << "\",";
 
-
     // Correction flag
     json
         << "\"queryWasCorrected\":"
-        << (
-            queryWasCorrected
-            ? "true"
-            : "false"
-        )
+        << (queryWasCorrected
+                ? "true"
+                : "false")
         << ",";
-
 
     // Exact match
     json
         << "\"exactMatch\":"
-        << (
-            exactMatch
-            ? "true"
-            : "false"
-        )
+        << (exactMatch
+                ? "true"
+                : "false")
         << ",";
-
 
     // Corrected match
     json
         << "\"correctedMatch\":"
-        << (
-            correctedMatch
-            ? "true"
-            : "false"
-        )
+        << (correctedMatch
+                ? "true"
+                : "false")
         << ",";
-
 
     // -----------------------------------------------------
     // RANKED SUGGESTIONS
@@ -587,26 +526,23 @@ string buildApiSearchResponse(
             json << ",";
         }
 
-        const string& suggestion =
+        const string &suggestion =
             rankedSuggestions[i];
 
         json
             << "{"
             << "\"text\":\""
             << escapeJson(
-                   suggestion
-               )
+                   suggestion)
             << "\","
             << "\"frequency\":"
             << searchHistory.getFrequency(
-                   suggestion
-               )
+                   suggestion)
             << "}";
     }
 
     json
         << "],";
-
 
     // -----------------------------------------------------
     // SEARCH RESULTS
@@ -624,19 +560,17 @@ string buildApiSearchResponse(
             json << ",";
         }
 
-        const SearchResult& result =
+        const SearchResult &result =
             pageResults[i];
 
         double finalScore =
-            result.getScore()
-            +
+            result.getScore() +
             result.getPersonalizationScore();
 
         string snippet =
             createSearchSnippet(
                 result.getContent(),
-                searchQuery
-            );
+                searchQuery);
 
         json
             << "{";
@@ -644,15 +578,13 @@ string buildApiSearchResponse(
         json
             << "\"title\":\""
             << escapeJson(
-                   result.getTitle()
-               )
+                   result.getTitle())
             << "\",";
 
         json
             << "\"url\":\""
             << escapeJson(
-                   result.getURL()
-               )
+                   result.getURL())
             << "\",";
 
         json
@@ -693,8 +625,7 @@ string buildApiSearchResponse(
         json
             << "\"snippet\":\""
             << escapeJson(
-                   snippet
-               )
+                   snippet)
             << "\"";
 
         json
@@ -710,22 +641,17 @@ string buildApiSearchResponse(
     return json.str();
 }
 
-
 // =========================================================
 // MAIN
 // =========================================================
 
 int main(
     int argc,
-    char* argv[]
-)
+    char *argv[])
 {
     bool apiMode =
-    (
-        argc > 1 &&
-        string(argv[1]) == "--api"
-    );
-
+        (argc > 1 &&
+         string(argv[1]) == "--api");
 
     // =====================================================
     // 1. SYSTEM INITIALIZATION
@@ -741,10 +667,8 @@ int main(
 
     SearchIndex searchIndex;
 
-
     // Maximum pages
     WebCrawler crawler(13);
-
 
     // =====================================================
     // 2. APPLICATION HEADER
@@ -757,15 +681,13 @@ int main(
 
     cout << "\nInitializing search engine...\n";
 
-
     // =====================================================
     // 3. LOAD SEARCH VOCABULARY
     // =====================================================
 
     vector<string> words =
         dataLoader.loadWords(
-            "data/words.txt"
-        );
+            "data/words.txt");
 
     if (words.empty())
     {
@@ -779,26 +701,11 @@ int main(
              << " words\n";
     }
 
-
-    // Insert dictionary entries into Trie. Keep complete phrases for
-    // phrase autocomplete, and also insert individual tokens so a valid
-    // word inside an entry (for example, "learning" in "machine learning")
-    // is not incorrectly spell-corrected to an unrelated word.
-    for (const string& word : words)
+    // Insert words into Trie
+    for (const string &word : words)
     {
         trie.insert(word);
-
-        istringstream wordStream(word);
-        string token;
-        while (wordStream >> token)
-        {
-            if (token != word)
-            {
-                trie.insert(token);
-            }
-        }
     }
-
 
     // =====================================================
     // 4. WEB CRAWLER
@@ -829,7 +736,6 @@ int main(
     // Crawl once, then build the index from these pages.
     crawler.crawl();
 
-
     // =====================================================
     // 5. GET CRAWLED PAGES
     // =====================================================
@@ -840,7 +746,6 @@ int main(
     cout << "\nCrawled pages available: "
          << crawledPages.size()
          << endl;
-
 
     // =====================================================
     // 6. BUILD SEARCH INDEX
@@ -856,16 +761,13 @@ int main(
     {
         searchIndex.addPage(
             static_cast<int>(
-                i + 1
-            ),
-            crawledPages[i]
-        );
+                i + 1),
+            crawledPages[i]);
     }
 
     cout << "\nSearch index successfully built for "
          << crawledPages.size()
          << " pages.\n";
-
 
     // =====================================================
     // API MODE
@@ -873,20 +775,34 @@ int main(
 
     if (apiMode)
     {
-        ApiServer apiServer(8080);
+        const char *portEnv = std::getenv("PORT");
+        int apiPort = 8080;
+
+        if (portEnv != nullptr)
+        {
+            try
+            {
+                apiPort = std::stoi(portEnv);
+            }
+            catch (...)
+            {
+                std::cerr << "Invalid PORT environment variable.\n";
+                return 1;
+            }
+        }
+
+        ApiServer apiServer(apiPort);
 
         apiServer.setRequestHandler(
-            [&](const string& query)
+            [&](const string &query)
             {
                 return buildApiSearchResponse(
                     query,
                     trie,
                     rankingEngine,
                     searchHistory,
-                    searchIndex
-                );
-            }
-        );
+                    searchIndex);
+            });
 
         cout << "\nStarting API mode...\n";
 
@@ -894,7 +810,6 @@ int main(
 
         return 0;
     }
-
 
     // =====================================================
     // 7. PAGE SEARCH DEMONSTRATION
@@ -913,8 +828,7 @@ int main(
 
     vector<int> testResults =
         searchIndex.search(
-            testKeyword
-        );
+            testKeyword);
 
     if (testResults.empty())
     {
@@ -933,7 +847,6 @@ int main(
         }
     }
 
-
     // =====================================================
     // 8. SEARCH INTERFACE
     // =====================================================
@@ -951,7 +864,6 @@ int main(
 
     cout << "Type 'exit' to close the application.\n";
 
-
     string query;
 
     string normalizedQuery;
@@ -959,7 +871,6 @@ int main(
     string correctedQuery;
 
     string searchQuery;
-
 
     while (true)
     {
@@ -971,9 +882,7 @@ int main(
 
         getline(
             cin,
-            query
-        );
-
+            query);
 
         // =================================================
         // EXIT
@@ -984,16 +893,13 @@ int main(
             break;
         }
 
-
         // =================================================
         // NORMALIZE QUERY
         // =================================================
 
         normalizedQuery =
             normalizeUserQuery(
-                query
-            );
-
+                query);
 
         // =================================================
         // EMPTY QUERY
@@ -1007,7 +913,6 @@ int main(
             continue;
         }
 
-
         // =================================================
         // SPELLING CORRECTION
         // =================================================
@@ -1015,19 +920,14 @@ int main(
         correctedQuery =
             correctQuery(
                 normalizedQuery,
-                trie
-            );
+                trie);
 
         searchQuery =
             correctedQuery;
 
-
         bool queryWasCorrected =
-        (
-            correctedQuery !=
-            normalizedQuery
-        );
-
+            (correctedQuery !=
+             normalizedQuery);
 
         // =================================================
         // DISPLAY FINAL PROCESSED QUERY
@@ -1036,7 +936,6 @@ int main(
         cout << "Processed Query: "
              << searchQuery
              << endl;
-
 
         // =================================================
         // SHOW CORRECTION
@@ -1050,7 +949,6 @@ int main(
                  << endl;
         }
 
-
         // =================================================
         // EXACT SEARCH
         // =================================================
@@ -1058,18 +956,13 @@ int main(
         bool exactMatch =
             allWordsExistInTrie(
                 normalizedQuery,
-                trie
-            );
+                trie);
 
         bool correctedMatch =
-        (
-            queryWasCorrected &&
-            allWordsExistInTrie(
-                correctedQuery,
-                trie
-            )
-        );
-
+            (queryWasCorrected &&
+             allWordsExistInTrie(
+                 correctedQuery,
+                 trie));
 
         if (exactMatch)
         {
@@ -1086,6 +979,16 @@ int main(
             cout << "\nExact Match: Not Found\n";
         }
 
+        // =================================================
+        // RECORD USER SEARCH HISTORY
+        // =================================================
+        //
+        // Store the final processed/corrected query so that
+        // spelling variants do not split personalization data.
+        // =================================================
+
+        searchHistory.recordSearch(
+            searchQuery);
 
         // =================================================
         // AUTOCOMPLETE
@@ -1093,9 +996,7 @@ int main(
 
         vector<string> suggestions =
             trie.autocomplete(
-                searchQuery
-            );
-
+                searchQuery);
 
         // =================================================
         // RANK SUGGESTIONS
@@ -1105,29 +1006,9 @@ int main(
             rankingEngine.rankSuggestions(
                 suggestions,
                 searchQuery,
-                searchHistory
-            );
-
-        // =================================================
-        // SEARCH CRAWLED WEB PAGES
-        // =================================================
-
-        vector<SearchResult> pageResults =
-            searchIndex.searchPages(
-                searchQuery,
-                searchHistory
-            );
-
-
-        // Update history after the current results are ranked, so the
-        // current query does not boost its own result scores.
-        searchHistory.recordSearch(
-            searchQuery
-        );
-
+                searchHistory);
 
         cout << "\nRanked Suggestions:\n";
-
 
         if (rankedSuggestions.empty())
         {
@@ -1139,7 +1020,7 @@ int main(
                  i < rankedSuggestions.size();
                  i++)
             {
-                const string& suggestion =
+                const string &suggestion =
                     rankedSuggestions[i];
 
                 cout << "  "
@@ -1148,38 +1029,41 @@ int main(
                      << suggestion
                      << " ["
                      << searchHistory.getFrequency(
-                            suggestion
-                        )
+                            suggestion)
                      << " searches]"
                      << endl;
             }
         }
 
+        // =================================================
+        // SEARCH CRAWLED WEB PAGES
+        // =================================================
+
+        vector<SearchResult> pageResults =
+            searchIndex.searchPages(
+                searchQuery,
+                searchHistory);
 
         // =================================================
         // RECORD PAGE SEARCH HISTORY
         // =================================================
 
-        for (const SearchResult& result :
+        for (const SearchResult &result :
              pageResults)
         {
             searchHistory.recordPageSearch(
-                result.getPageID()
-            );
+                result.getPageID());
 
             searchHistory.recordQueryPage(
                 searchQuery,
-                result.getPageID()
-            );
+                result.getPageID());
         }
-
 
         // =================================================
         // DISPLAY WEB PAGE RESULTS
         // =================================================
 
         cout << "\nMatching Web Pages:\n";
-
 
         if (pageResults.empty())
         {
@@ -1235,12 +1119,10 @@ int main(
                      << endl;
 
                 cout << "  Final Score            : "
-                     << pageResults[i].getScore()
-                        +
-                        pageResults[i]
-                            .getPersonalizationScore()
+                     << pageResults[i].getScore() +
+                            pageResults[i]
+                                .getPersonalizationScore()
                      << endl;
-
 
                 // =================================================
                 // SEARCH SNIPPET
@@ -1250,8 +1132,7 @@ int main(
                     createSearchSnippet(
                         pageResults[i]
                             .getContent(),
-                        searchQuery
-                    );
+                        searchQuery);
 
                 cout << "  Snippet                : "
                      << snippet
@@ -1260,13 +1141,11 @@ int main(
         }
     }
 
-
     // =====================================================
     // 9. SEARCH HISTORY
     // =====================================================
 
     searchHistory.displayHistory();
-
 
     // =====================================================
     // 10. CRAWLED PAGE SUMMARY
@@ -1299,16 +1178,13 @@ int main(
         cout << "  Page Searches: "
              << searchHistory.getPageSearchFrequency(
                     static_cast<int>(
-                        i + 1
-                    )
-                )
+                        i + 1))
              << endl;
 
         cout << "  Content      : "
              << crawledPages[i].getContent()
              << endl;
     }
-
 
     // =====================================================
     // 11. PROGRAM TERMINATION
