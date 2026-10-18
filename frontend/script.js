@@ -31,8 +31,7 @@ const resultCount =
 // C++ API CONFIGURATION
 // =========================================================
 
-const API_BASE_URL =
-    "http://127.0.0.1:8080";
+const API_BASE_URL = "https://pise-backend.onrender.com";
 
 // =========================================================
 // RESULT CARD INTERACTION STYLE
