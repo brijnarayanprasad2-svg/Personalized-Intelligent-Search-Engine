@@ -57,7 +57,7 @@ The crawler uses:
 - Set for visited URL tracking
 - HTML parsing for titles, paragraphs and links
 
-The current implementation works with three local HTML pages.
+The current implementation ships with 13 local HTML pages in `data/`; the crawler seeds and page limit are configured to use that corpus.
 
 ### 5. Search Index
 

@@ -1704,3 +1704,77 @@ input:focus-visible
         transition-duration: 0.01ms !important;
     }
 }
+/* =========================================================
+   CLICKABLE SEARCH RESULT
+   ========================================================= */
+
+.result-card-clickable {
+    cursor: pointer;
+
+    position: relative;
+
+    transition:
+        transform 0.22s ease,
+        border-color 0.22s ease,
+        background 0.22s ease,
+        box-shadow 0.22s ease;
+}
+
+
+.result-card-clickable:hover {
+    transform: translateY(-3px);
+
+    border-color:
+        rgba(157, 168, 255, 0.32);
+
+    background:
+        rgba(20, 25, 40, 0.92);
+
+    box-shadow:
+        0 16px 45px rgba(0, 0, 0, 0.25);
+}
+
+
+.result-card-clickable:focus-visible {
+    outline: 2px solid #9da8ff;
+
+    outline-offset: 3px;
+}
+
+
+/* =========================================================
+   READ FULL ARTICLE
+   ========================================================= */
+
+.result-action {
+    display: flex;
+
+    align-items: center;
+
+    gap: 7px;
+
+    margin-top: 18px;
+
+    padding-top: 14px;
+
+    border-top:
+        1px solid rgba(255, 255, 255, 0.055);
+
+    color: #aab3ff;
+
+    font-size: 12px;
+
+    font-weight: 700;
+}
+
+
+.result-action span {
+    transition:
+        transform 0.2s ease;
+}
+
+
+.result-card-clickable:hover
+.result-action span {
+    transform: translateX(4px);
+}

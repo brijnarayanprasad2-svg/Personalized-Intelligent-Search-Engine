@@ -17,12 +17,91 @@
 #include <unordered_set>
 
 using namespace std;
-typedef unsigned char byte;
+
 string createSearchSnippet(
     const string& content,
     const string& query
-);
+)
+{
+    if (content.empty())
+        return "No preview available.";
 
+    string lowerContent = content;
+    string lowerQuery = query;
+
+    transform(
+        lowerContent.begin(),
+        lowerContent.end(),
+        lowerContent.begin(),
+        [](unsigned char ch) {
+            return static_cast<char>(tolower(ch));
+        }
+    );
+
+    transform(
+        lowerQuery.begin(),
+        lowerQuery.end(),
+        lowerQuery.begin(),
+        [](unsigned char ch) {
+            return static_cast<char>(tolower(ch));
+        }
+    );
+
+    // First, search for the complete query phrase.
+    size_t position = lowerContent.find(lowerQuery);
+
+    // If the full phrase is absent, find the first matching word.
+    if (position == string::npos)
+    {
+        size_t wordStart = lowerQuery.find_first_not_of(" \t\n");
+
+        while (wordStart != string::npos)
+        {
+            size_t wordEnd =
+                lowerQuery.find_first_of(" \t\n", wordStart);
+
+            string word = lowerQuery.substr(
+                wordStart,
+                wordEnd == string::npos
+                    ? string::npos
+                    : wordEnd - wordStart
+            );
+
+            position = lowerContent.find(word);
+
+            if (position != string::npos)
+                break;
+
+            if (wordEnd == string::npos)
+                break;
+
+            wordStart =
+                lowerQuery.find_first_not_of(" \t\n", wordEnd);
+        }
+    }
+
+    // If no query word matches, show the beginning of the content.
+    if (position == string::npos)
+        position = 0;
+
+    const size_t snippetLength = 180;
+    const size_t contextBefore = 60;
+
+    size_t start =
+        position > contextBefore
+            ? position - contextBefore
+            : 0;
+
+    string snippet = content.substr(start, snippetLength);
+
+    if (start > 0)
+        snippet = "..." + snippet;
+
+    if (start + snippetLength < content.length())
+        snippet += "...";
+
+    return snippet;
+}
 // =========================================================
 // QUERY NORMALIZATION
 // =========================================================
@@ -67,79 +146,102 @@ string normalizeUserQuery(
 
     return result;
 }
-// =========================================================
-// COMMON PREFIX LENGTH
-// =========================================================
 
-size_t commonPrefixLength(
-    const string& first,
-    const string& second
+
+// =========================================================
+// COMMON SEARCH ALIAS EXPANSION
+// =========================================================
+// Handles common short forms when the surrounding words make
+// the intended topic clear. This keeps normal words untouched.
+//
+// Examples:
+// data ds science  -> data data science science
+// data structures ds -> data structures data structures
+// machine ml learning -> machine machine learning learning
+// ai intelligence -> artificial intelligence intelligence
+
+string expandCommonSearchAliases(
+    const string& query
 )
 {
-    size_t length =
-        min(
-            first.length(),
-            second.length()
-        );
+    istringstream input(query);
+    vector<string> words;
+    string word;
 
-    size_t i = 0;
-
-    while (i < length &&
-           first[i] == second[i])
+    while (input >> word)
     {
-        i++;
+        words.push_back(word);
     }
 
-    return i;
+    bool hasScience = false;
+    bool hasStructures = false;
+    bool hasLearning = false;
+    bool hasIntelligence = false;
+    bool hasManagement = false;
+
+    for (const string& item : words)
+    {
+        if (item == "science")
+            hasScience = true;
+
+        if (item == "structure" ||
+            item == "structures")
+            hasStructures = true;
+
+        if (item == "learning")
+            hasLearning = true;
+
+        if (item == "intelligence")
+            hasIntelligence = true;
+
+        if (item == "management")
+            hasManagement = true;
+    }
+
+    string result;
+
+    for (const string& item : words)
+    {
+        string replacement;
+
+        if (item == "ds")
+        {
+            if (hasScience)
+                replacement = "data science";
+            else if (hasStructures)
+                replacement = "data structures";
+            else
+                replacement = item;
+        }
+        else if (item == "ml" && hasLearning)
+        {
+            replacement = "machine learning";
+        }
+        else if (item == "ai" && hasIntelligence)
+        {
+            replacement = "artificial intelligence";
+        }
+        else if (item == "db" && hasManagement)
+        {
+            replacement = "database management";
+        }
+        else
+        {
+            replacement = item;
+        }
+
+        if (!result.empty())
+            result += ' ';
+
+        result += replacement;
+    }
+
+    return result;
 }
 
 
 // =========================================================
-// SAFE WORD CORRECTION
-// =========================================================
-
-string findSafeCorrection(
-    const string& word,
-    const Trie& trie
-)
-{
-    string correctedWord =
-        trie.findClosestWord(
-            word
-        );
-
-    if (correctedWord.empty() ||
-        correctedWord == word)
-    {
-        return correctedWord;
-    }
-
-    // Avoid aggressive short-word corrections.
-    // Example:
-    // dts -> dns  (should NOT happen)
-    //
-    // Valid examples remain:
-    // dats   -> data
-    // dnss   -> dns
-    // protcol -> protocol
-    // internt -> internet
-    // comptur -> computer
-
-    if (word.length() >= 3 &&
-        commonPrefixLength(
-            word,
-            correctedWord
-        ) < 2)
-    {
-        return word;
-    }
-
-    return correctedWord;
-}
-
-
-// =========================================================
-// QUERY SPELLING CORRECTION + DUPLICATE REMOVAL
+// QUERY SPELLING CORRECTION
 // =========================================================
 
 string correctQuery(
@@ -148,32 +250,25 @@ string correctQuery(
 )
 {
     string correctedQuery;
-
     unordered_set<string> seen;
 
     istringstream input(query);
-
     string word;
-
 
     while (input >> word)
     {
         string correctedWord =
-            findSafeCorrection(
-                word,
-                trie
+            trie.findClosestWord(
+                word
             );
 
-
+        // No safe correction found
         if (correctedWord.empty())
         {
-            correctedWord =
-                word;
+            correctedWord = word;
         }
 
-
         // Remove duplicate corrected words
-        // while preserving first occurrence.
         if (!seen.insert(
                 correctedWord
             ).second)
@@ -181,54 +276,16 @@ string correctQuery(
             continue;
         }
 
-
         if (!correctedQuery.empty())
         {
             correctedQuery += ' ';
         }
 
-
         correctedQuery +=
             correctedWord;
     }
 
-
     return correctedQuery;
-}
-
-
-// =========================================================
-// CHECK WHETHER ANY WORD WAS ACTUALLY CORRECTED
-// =========================================================
-
-bool hasSpellingCorrection(
-    const string& query,
-    const Trie& trie
-)
-{
-    istringstream input(query);
-
-    string word;
-
-
-    while (input >> word)
-    {
-        string correctedWord =
-            findSafeCorrection(
-                word,
-                trie
-            );
-
-
-        if (!correctedWord.empty() &&
-            correctedWord != word)
-        {
-            return true;
-        }
-    }
-
-
-    return false;
 }
 
 
@@ -242,11 +299,9 @@ bool allWordsExistInTrie(
 )
 {
     istringstream input(query);
-
     string word;
 
     bool hasWord = false;
-
 
     while (input >> word)
     {
@@ -257,7 +312,6 @@ bool allWordsExistInTrie(
             return false;
         }
     }
-
 
     return hasWord;
 }
@@ -314,139 +368,6 @@ string escapeJson(
     return result;
 }
 
-// =========================================================
-// CREATE SEARCH SNIPPET
-// =========================================================
-
-string createSearchSnippet(
-    const string& content,
-    const string& query
-)
-{
-    if (content.empty())
-    {
-        return "";
-    }
-
-    // -----------------------------------------------------
-    // NORMALIZE QUERY
-    // -----------------------------------------------------
-
-    string normalizedQuery =
-        normalizeUserQuery(
-            query
-        );
-
-    if (normalizedQuery.empty())
-    {
-        return content.substr(
-            0,
-            180
-        );
-    }
-
-    // -----------------------------------------------------
-    // NORMALIZE CONTENT
-    // -----------------------------------------------------
-
-    string normalizedContent =
-        normalizeUserQuery(
-            content
-        );
-
-    if (normalizedContent.empty())
-    {
-        return "";
-    }
-
-    // -----------------------------------------------------
-    // FIND FIRST QUERY WORD
-    // -----------------------------------------------------
-
-    istringstream input(
-        normalizedQuery
-    );
-
-    string queryWord;
-
-    size_t bestPosition =
-        string::npos;
-
-    while (input >> queryWord)
-    {
-        size_t position =
-            normalizedContent.find(
-                queryWord
-            );
-
-        if (position != string::npos &&
-            (
-                bestPosition == string::npos ||
-                position < bestPosition
-            ))
-        {
-            bestPosition = position;
-        }
-    }
-
-    // -----------------------------------------------------
-    // NO QUERY WORD FOUND
-    // -----------------------------------------------------
-
-    if (bestPosition == string::npos)
-    {
-        return content.substr(
-            0,
-            180
-        );
-    }
-
-    // -----------------------------------------------------
-    // CREATE SNIPPET WINDOW
-    // -----------------------------------------------------
-
-    const size_t CONTEXT_BEFORE = 70;
-    const size_t CONTEXT_AFTER  = 110;
-
-    size_t start =
-        (
-            bestPosition > CONTEXT_BEFORE
-            ?
-            bestPosition - CONTEXT_BEFORE
-            :
-            0
-        );
-
-    size_t snippetLength =
-        CONTEXT_BEFORE +
-        CONTEXT_AFTER;
-
-    string snippet =
-        normalizedContent.substr(
-            start,
-            snippetLength
-        );
-
-    // -----------------------------------------------------
-    // ADD ELLIPSIS
-    // -----------------------------------------------------
-
-    if (start > 0)
-    {
-        snippet =
-            "... " +
-            snippet;
-    }
-
-    if (start + snippetLength <
-        normalizedContent.length())
-    {
-        snippet +=
-            " ...";
-    }
-
-    return snippet;
-}
 
 // =========================================================
 // API SEARCH RESPONSE
@@ -477,12 +398,22 @@ string buildApiSearchResponse(
 
 
     // -----------------------------------------------------
+    // COMMON SEARCH ALIASES
+    // -----------------------------------------------------
+
+    string expandedQuery =
+        expandCommonSearchAliases(
+            normalizedQuery
+        );
+
+
+    // -----------------------------------------------------
     // SPELLING CORRECTION
     // -----------------------------------------------------
 
     string correctedQuery =
         correctQuery(
-            normalizedQuery,
+            expandedQuery,
             trie
         );
 
@@ -491,15 +422,11 @@ string buildApiSearchResponse(
     string searchQuery =
         correctedQuery;
 
-        bool spellingCorrected =
-         hasSpellingCorrection(
-          normalizedQuery,
-          trie
+    bool queryWasCorrected =
+        (
+            correctedQuery !=
+            normalizedQuery
         );
-
-     bool queryWasCorrected =
-     spellingCorrected;
-
 
 
     // -----------------------------------------------------
@@ -520,17 +447,6 @@ string buildApiSearchResponse(
                 trie
             )
         );
-
-
-    // -----------------------------------------------------
-    // RECORD USER SEARCH HISTORY
-    // -----------------------------------------------------
-    // Store the final processed/corrected query so that
-    // spelling variants do not split personalization data.
-
-    searchHistory.recordSearch(
-        searchQuery
-    );
 
 
     // -----------------------------------------------------
@@ -564,6 +480,14 @@ string buildApiSearchResponse(
             searchQuery,
             searchHistory
         );
+
+
+    // Record this query only after ranking is complete. This keeps
+    // a search from boosting its own results; the updated frequency
+    // is still available when the response is serialized below.
+    searchHistory.recordSearch(
+        searchQuery
+    );
 
 
     // -----------------------------------------------------
@@ -603,7 +527,7 @@ string buildApiSearchResponse(
     // Processed query = normalized + corrected + deduplicated
     json
         << "\"processedQuery\":\""
-        << escapeJson(correctedQuery)
+        << escapeJson(searchQuery)
         << "\",";
 
 
@@ -856,10 +780,23 @@ int main(
     }
 
 
-    // Insert words into Trie
+    // Insert dictionary entries into Trie. Keep complete phrases for
+    // phrase autocomplete, and also insert individual tokens so a valid
+    // word inside an entry (for example, "learning" in "machine learning")
+    // is not incorrectly spell-corrected to an unrelated word.
     for (const string& word : words)
     {
         trie.insert(word);
+
+        istringstream wordStream(word);
+        string token;
+        while (wordStream >> token)
+        {
+            if (token != word)
+            {
+                trie.insert(token);
+            }
+        }
     }
 
 
@@ -872,8 +809,11 @@ int main(
     cout << "==================================================\n";
 
     cout << "\nStarting web crawler...\n";
+
+    // Use the local HTML corpus shipped with this project.
+    // Keep the seeds aligned with files in data/.
     crawler.addSeedURL("computer_science");
-    crawler.addSeedURL("data_structures"); 
+    crawler.addSeedURL("data_structures");
     crawler.addSeedURL("algorithms");
     crawler.addSeedURL("cpp_programming");
     crawler.addSeedURL("object_oriented_programming");
@@ -882,7 +822,11 @@ int main(
     crawler.addSeedURL("machine_learning");
     crawler.addSeedURL("internet_protocols");
     crawler.addSeedURL("database_management");
-    
+    crawler.addSeedURL("page1");
+    crawler.addSeedURL("page2");
+    crawler.addSeedURL("page3");
+
+    // Crawl once, then build the index from these pages.
     crawler.crawl();
 
 
@@ -1077,15 +1021,22 @@ int main(
         searchQuery =
             correctedQuery;
 
-        bool spellingCorrected =
-          hasSpellingCorrection(
-         normalizedQuery,
-         trie
-        );
 
         bool queryWasCorrected =
+        (
+            correctedQuery !=
+            normalizedQuery
+        );
 
-         spellingCorrected;
+
+        // =================================================
+        // DISPLAY FINAL PROCESSED QUERY
+        // =================================================
+
+        cout << "Processed Query: "
+             << searchQuery
+             << endl;
+
 
         // =================================================
         // SHOW CORRECTION
@@ -1098,25 +1049,6 @@ int main(
                  << "?"
                  << endl;
         }
-
-        correctedQuery =
-            correctQuery(
-            normalizedQuery,
-            trie
-        );
-
-        searchQuery =
-          correctedQuery;
-
-          
-        // =================================================
-        // DISPLAY FINAL PROCESSED QUERY
-        // =================================================
-
-        cout << "Processed Query: "
-             << searchQuery
-             << endl;
-
 
 
         // =================================================
@@ -1156,19 +1088,6 @@ int main(
 
 
         // =================================================
-        // RECORD USER SEARCH HISTORY
-        // =================================================
-        //
-        // Store the final processed/corrected query so that
-        // spelling variants do not split personalization data.
-        // =================================================
-
-        searchHistory.recordSearch(
-            correctedQuery
-        );
-
-
-        // =================================================
         // AUTOCOMPLETE
         // =================================================
 
@@ -1188,6 +1107,24 @@ int main(
                 searchQuery,
                 searchHistory
             );
+
+        // =================================================
+        // SEARCH CRAWLED WEB PAGES
+        // =================================================
+
+        vector<SearchResult> pageResults =
+            searchIndex.searchPages(
+                searchQuery,
+                searchHistory
+            );
+
+
+        // Update history after the current results are ranked, so the
+        // current query does not boost its own result scores.
+        searchHistory.recordSearch(
+            searchQuery
+        );
+
 
         cout << "\nRanked Suggestions:\n";
 
@@ -1217,17 +1154,6 @@ int main(
                      << endl;
             }
         }
-
-
-        // =================================================
-        // SEARCH CRAWLED WEB PAGES
-        // =================================================
-
-        vector<SearchResult> pageResults =
-            searchIndex.searchPages(
-                searchQuery,
-                searchHistory
-            );
 
 
         // =================================================

@@ -34,6 +34,60 @@ const resultCount =
 const API_BASE_URL =
     "http://127.0.0.1:8080";
 
+// =========================================================
+// RESULT CARD INTERACTION STYLE
+// =========================================================
+
+(function addResultInteractionStyles()
+{
+    if (document.getElementById("piseResultInteractionStyles"))
+    {
+        return;
+    }
+
+    const style = document.createElement("style");
+    style.id = "piseResultInteractionStyles";
+    style.textContent = `
+        .clickable-result {
+            cursor: pointer;
+            transition: transform .22s ease, border-color .22s ease, box-shadow .22s ease;
+        }
+
+        .clickable-result:hover {
+            transform: translateY(-3px);
+            border-color: rgba(150, 160, 255, .42) !important;
+            box-shadow: 0 18px 45px rgba(40, 48, 110, .20);
+        }
+
+        .clickable-result:focus-visible {
+            outline: 2px solid rgba(150, 160, 255, .85);
+            outline-offset: 4px;
+        }
+
+        .result-open {
+            margin-top: 16px;
+            padding-top: 13px;
+            border-top: 1px solid rgba(255,255,255,.07);
+            color: #aeb7ff;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: .02em;
+        }
+
+        .result-open span {
+            display: inline-block;
+            margin-left: 5px;
+            transition: transform .2s ease;
+        }
+
+        .clickable-result:hover .result-open span {
+            transform: translateX(4px);
+        }
+    `;
+    document.head.appendChild(style);
+})();
+
+
 
 // =========================================================
 // SEARCH REQUEST CONTROL
@@ -249,7 +303,179 @@ function handleExternalNavigation(query)
     return false;
 }
 
+// =========================================================
+// GET DETAILS PAGE KEY
+// =========================================================
 
+function getDetailsPageKey(result)
+{
+    const url =
+        String(result?.url ?? "")
+            .trim()
+            .toLowerCase();
+
+    const title =
+        String(result?.title ?? "")
+            .trim()
+            .toLowerCase();
+
+
+    // -----------------------------------------------------
+    // Extract filename from URL
+    // -----------------------------------------------------
+
+    let value = url;
+
+    value = value.split("?")[0];
+    value = value.split("#")[0];
+    value = value.split("/").pop();
+
+    value = value.replace(
+        /\.html$/i,
+        ""
+    );
+
+    value = value
+        .replace(/[-\s]+/g, "_")
+        .replace(/[^a-z0-9_]/g, "");
+
+
+    // -----------------------------------------------------
+    // Known PISE pages
+    // -----------------------------------------------------
+
+    const knownPages =
+    {
+        "computer_science":
+            "computer_science",
+
+        "data_structures":
+            "data_structures",
+
+        "algorithms":
+            "algorithms",
+
+        "cpp_programming":
+            "cpp_programming",
+
+        "object_oriented_programming":
+            "object_oriented_programming",
+
+        "data_science":
+            "data_science",
+
+        "machine_learning":
+            "machine_learning",
+
+        "artificial_intelligence":
+            "artificial_intelligence",
+
+        "internet_protocols":
+            "internet_protocols",
+
+        "database_management":
+            "database_management"
+    };
+
+
+    // -----------------------------------------------------
+    // Match URL
+    // -----------------------------------------------------
+
+    if (knownPages[value])
+    {
+        return knownPages[value];
+    }
+
+
+    // -----------------------------------------------------
+    // Match title
+    // -----------------------------------------------------
+
+    const normalizedTitle =
+        title
+            .replace(/[^a-z0-9\s]/g, "")
+            .replace(/\s+/g, "_");
+
+
+    if (knownPages[normalizedTitle])
+    {
+        return knownPages[normalizedTitle];
+    }
+
+
+    // -----------------------------------------------------
+    // Partial title matching
+    // -----------------------------------------------------
+
+    if (title.includes("data science"))
+    {
+        return "data_science";
+    }
+
+
+    if (title.includes("data structure"))
+    {
+        return "data_structures";
+    }
+
+
+    if (title.includes("machine learning"))
+    {
+        return "machine_learning";
+    }
+
+
+    if (title.includes("artificial intelligence"))
+    {
+        return "artificial_intelligence";
+    }
+
+
+    if (title.includes("object oriented"))
+    {
+        return "object_oriented_programming";
+    }
+
+
+    if (title.includes("computer science"))
+    {
+        return "computer_science";
+    }
+
+
+    if (title.includes("database"))
+    {
+        return "database_management";
+    }
+
+
+    if (title.includes("algorithm"))
+    {
+        return "algorithms";
+    }
+
+
+    if (
+        title.includes("internet") ||
+        title.includes("protocol")
+    )
+    {
+        return "internet_protocols";
+    }
+
+
+    if (
+        title.includes("c++") ||
+        title.includes("cpp")
+    )
+    {
+        return "cpp_programming";
+    }
+
+
+    return null;
+}
 // =========================================================
 // DISPLAY SEARCH RESULTS
 // =========================================================
@@ -268,13 +494,16 @@ function displayResults(
     }
 
 
-    // Clear previous results
+    // -----------------------------------------------------
+    // CLEAR OLD RESULTS
+    // -----------------------------------------------------
+
     resultsContainer.innerHTML = "";
 
 
-    // =====================================================
+    // -----------------------------------------------------
     // UPDATE HEADING
-    // =====================================================
+    // -----------------------------------------------------
 
     if (resultsTitle)
     {
@@ -283,9 +512,9 @@ function displayResults(
     }
 
 
-    // =====================================================
-    // UPDATE COUNT
-    // =====================================================
+    // -----------------------------------------------------
+    // UPDATE RESULT COUNT
+    // -----------------------------------------------------
 
     if (resultCount)
     {
@@ -298,9 +527,9 @@ function displayResults(
     }
 
 
-    // =====================================================
+    // -----------------------------------------------------
     // NO RESULTS
-    // =====================================================
+    // -----------------------------------------------------
 
     if (results.length === 0)
     {
@@ -309,6 +538,7 @@ function displayResults(
 
         emptyCard.className =
             "result-card";
+
 
         emptyCard.innerHTML = `
             <div class="result-title">
@@ -320,6 +550,7 @@ function displayResults(
                 in the indexed pages.
             </div>
         `;
+
 
         resultsContainer.appendChild(
             emptyCard
@@ -333,19 +564,21 @@ function displayResults(
             );
         }
 
+
         return;
     }
 
 
-    // =====================================================
-    // DISPLAY BACKEND RESULTS
-    // =====================================================
+    // -----------------------------------------------------
+    // DISPLAY RESULTS
+    // -----------------------------------------------------
 
     results.forEach(
         (result, index) =>
         {
             const card =
                 document.createElement("article");
+
 
             card.className =
                 "result-card";
@@ -359,21 +592,26 @@ function displayResults(
                 result?.title ??
                 "Untitled page";
 
+
             const url =
                 result?.url ??
                 "";
+
 
             const snippet =
                 result?.snippet ??
                 "";
 
+
             const relevance =
                 result?.relevance ??
                 0;
 
+
             const personalization =
                 result?.personalization ??
                 0;
+
 
             const finalScore =
                 result?.finalScore ??
@@ -381,7 +619,15 @@ function displayResults(
 
 
             // -------------------------------------------------
-            // RESULT CARD
+            // FIND DETAILS PAGE
+            // -------------------------------------------------
+
+            const detailsKey =
+                getDetailsPageKey(result);
+
+
+            // -------------------------------------------------
+            // RESULT CARD HTML
             // -------------------------------------------------
 
             card.innerHTML = `
@@ -416,7 +662,92 @@ function displayResults(
                     </span>
 
                 </div>
+
+                ${
+                    detailsKey
+                        ? `
+                            <div class="result-action">
+                                Read full article
+                                <span>→</span>
+                            </div>
+                          `
+                        : ""
+                }
             `;
+
+
+            // -------------------------------------------------
+            // MAKE CARD CLICKABLE
+            // -------------------------------------------------
+
+            if (detailsKey)
+            {
+                card.classList.add(
+                    "result-card-clickable"
+                );
+
+
+                card.setAttribute(
+                    "role",
+                    "button"
+                );
+
+
+                card.setAttribute(
+                    "tabindex",
+                    "0"
+                );
+
+
+                card.setAttribute(
+                    "aria-label",
+                    `Read full article about ${title}`
+                );
+
+
+                // ---------------------------------------------
+                // Mouse click
+                // ---------------------------------------------
+
+                card.addEventListener(
+                    "click",
+                    () =>
+                    {
+                        window.location.href =
+                            `./details.html?page=${
+                                encodeURIComponent(
+                                    detailsKey
+                                )
+                            }`;
+                    }
+                );
+
+
+                // ---------------------------------------------
+                // Keyboard accessibility
+                // ---------------------------------------------
+
+                card.addEventListener(
+                    "keydown",
+                    (event) =>
+                    {
+                        if (
+                            event.key === "Enter" ||
+                            event.key === " "
+                        )
+                        {
+                            event.preventDefault();
+
+                            window.location.href =
+                                `./details.html?page=${
+                                    encodeURIComponent(
+                                        detailsKey
+                                    )
+                                }`;
+                        }
+                    }
+                );
+            }
 
 
             resultsContainer.appendChild(
@@ -426,9 +757,9 @@ function displayResults(
     );
 
 
-    // =====================================================
-    // SHOW RESULTS
-    // =====================================================
+    // -----------------------------------------------------
+    // SHOW RESULTS SECTION
+    // -----------------------------------------------------
 
     if (resultsSection)
     {
@@ -437,11 +768,12 @@ function displayResults(
         );
 
 
-        // Scroll only after actual results are rendered.
-        resultsSection.scrollIntoView({
-            behavior: "smooth",
-            block: "start"
-        });
+        resultsSection.scrollIntoView(
+            {
+                behavior: "smooth",
+                block: "start"
+            }
+        );
     }
 }
 
@@ -791,6 +1123,205 @@ async function performSearch()
                 suggestion.textContent =
                     "";
             }
+        }
+        // =========================================================
+        // RESULT PAGE KEY
+        // =========================================================
+        // Converts the backend page URL/title into the topic key 
+        // =========================================================
+
+        function getDetailsPageKey(result)
+        {
+           const url =
+            String(result?.url ?? "")
+            .trim()
+            .toLowerCase();
+
+            const title =
+            String(result?.title ?? "")
+            .trim()
+            .toLowerCase();
+
+
+            // -----------------------------------------------------
+            // First try the backend URL
+           // -----------------------------------------------------
+
+           let value = url;
+
+
+            // Remove query string
+             value =
+               value.split("?")[0];
+
+
+            // Remove hash
+             value =
+               value.split("#")[0];
+
+
+            // Remove path
+            value =
+               value.split("/").pop();
+
+            // Remove .html
+            value =
+              value.replace(/\.html$/i, "");
+
+            // Replace spaces/hyphens with underscore
+              value =
+               value
+                .replace(/[-\s]+/g, "_")
+                .replace(/[^a-z0-9_]/g, "");
+
+
+            // -----------------------------------------------------
+            // Known project pages
+             // -----------------------------------------------------
+
+           const knownPages =
+            {
+               "computer_science":
+               "computer_science",
+
+                "data_structures":
+                "data_structures",
+
+                "algorithms":
+                "algorithms",
+
+                "cpp_programming":
+                "cpp_programming",
+ 
+                "object_oriented_programming":
+                "object_oriented_programming",
+
+                "data_science":
+                "data_science",
+
+                "machine_learning":
+                "machine_learning",
+
+                "artificial_intelligence":
+                "artificial_intelligence",
+
+                "internet_protocols":
+                "internet_protocols",
+
+                "database_management":
+                "database_management"
+            };
+
+
+           // -----------------------------------------------------
+           // Direct URL match
+           // -----------------------------------------------------
+
+            if (knownPages[value])
+            {
+               return knownPages[value];
+            }
+
+
+               // -----------------------------------------------------
+              // Title-based fallback
+               // -----------------------------------------------------
+
+            const normalizedTitle =
+                 title
+                 .replace(/[^a-z0-9\s]/g, "")
+                  .replace(/\s+/g, "_");
+
+
+                if (knownPages[normalizedTitle])
+                {
+                   return knownPages[normalizedTitle];
+                }
+
+
+              // -----------------------------------------------------
+             // Partial title matching
+              // -----------------------------------------------------
+
+            if(
+              title.includes("data science")
+            )
+            {
+             return "data_science";
+            }
+
+            if(
+                title.includes("data structure")
+            )
+            {
+               return "data_structures";
+            }
+
+            if(
+               title.includes("machine learning")
+            )
+            {
+               return "machine_learning";
+            }
+
+            if(
+               title.includes("artificial intelligence")
+           )
+           { 
+               return "artificial_intelligence";
+            }
+
+            if(
+                title.includes("object oriented")
+            )
+            {
+               return "object_oriented_programming";
+            }
+
+            if(
+                  title.includes("computer science")
+            )
+            {
+              return "computer_science";
+            }
+
+            if(
+                 title.includes("database")
+            )
+            {
+              return "database_management";
+            }
+
+
+            if( 
+               title.includes("algorithm")
+            )
+            {
+              return "algorithms";
+            }
+
+            if(
+               title.includes("internet") ||
+               title.includes("protocol")
+            )
+            {
+              return "internet_protocols";
+            }
+
+            if (
+              title.includes("c++") ||
+              title.includes("cpp")
+            )
+            {
+               return "cpp_programming";
+            }
+
+
+              // -----------------------------------------------------
+              // No known topic
+               // -----------------------------------------------------
+
+             return null;
         }
 
 

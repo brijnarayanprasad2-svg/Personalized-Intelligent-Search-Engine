@@ -46,6 +46,18 @@ string SearchIndex::normalize(
         }
     }
 
+    // Normalize common English plurals to their singular index key.
+    // This keeps the index architecture unchanged while allowing queries
+    // such as "protocol" to match page text containing "protocols".
+    if (result.size() > 4 && result.back() == 's' &&
+        result[result.size() - 2] != 'e' &&
+        result.compare(result.size() - 2, 2, "ss") != 0 &&
+        result.compare(result.size() - 2, 2, "us") != 0 &&
+        result.compare(result.size() - 2, 2, "is") != 0)
+    {
+        result.pop_back();
+    }
+
     return result;
 }
 

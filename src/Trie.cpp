@@ -45,10 +45,14 @@ void Trie::insert(
             current->getChild(ch);
     }
 
-    current->setEndOfWord(true);
-
-    // Store dictionary word for spelling correction.
-    dictionaryWords.push_back(word);
+    // Keep each dictionary entry once. The source vocabulary can
+    // contain repeated words; duplicates only make typo correction
+    // perform the same edit-distance work repeatedly.
+    if (!current->getEndOfWord())
+    {
+        current->setEndOfWord(true);
+        dictionaryWords.push_back(word);
+    }
 }
 
 
